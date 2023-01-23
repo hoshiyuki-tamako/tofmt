@@ -1,6 +1,8 @@
 # TOF monster timetable
 
-for managing farming tof boss items
+[https://hoshiyuki-tamako.github.io/tofmt/](https://hoshiyuki-tamako.github.io/tofmt/)
+
+For managing farming tof boss items
 
 ## requirement
 
