@@ -1,6 +1,16 @@
 {
   "name": "tofmt",
   "version": "1.0.0",
+  "license": "MIT",
+  "author": "hoshiyuki-tamako",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hoshiyuki-tamako/tofmt.git"
+  },
+  "homepage": "https://github.com/hoshiyuki-tamako/tofmt",
+  "keywords": [
+    "Tower Of Fantasy"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "run-p build-only",
