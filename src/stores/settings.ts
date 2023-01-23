@@ -111,7 +111,7 @@ export const useSettings = defineStore(
     const resetSettings = () => {
       id.value = ulid().slice(0, 8);
       targetId.value = "";
-      language.value = "zh-tw";
+      language.value = getUserCurrentLanguage();
       darkMode.value = useDark().value;
       showNickName.value = false;
       viewMode.value = "byLine";

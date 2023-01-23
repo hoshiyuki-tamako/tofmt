@@ -683,6 +683,7 @@ async function onClickResetSettings() {
     settings.resetSettings();
     onClickCloseHosting();
     onClickCloseFollowing();
+    onLanguageChange();
     ElMessage.success(t("成功重置設定"));
   } catch (e) {
     console.info(e);
