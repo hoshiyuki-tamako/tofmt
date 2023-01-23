@@ -77,7 +77,6 @@ function getPeerId(id: string) {
 function onServerError(e: Error) {
   ElNotification.error({
     message: e.message,
-    duration: 0,
   });
 }
 
@@ -88,7 +87,6 @@ function onClickHostTable() {
   if (!settings.id) {
     ElNotification.error({
       message: t("ID 不能為空"),
-      duration: 0,
     });
     return;
   }
@@ -157,7 +155,6 @@ function onClickFollowTable() {
   if (!settings.id) {
     ElNotification.error({
       message: t("目標 ID 不能為空"),
-      duration: 0,
     });
     return;
   }
