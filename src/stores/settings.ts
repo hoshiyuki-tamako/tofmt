@@ -36,6 +36,7 @@ export const viewModes = {
 
 function getUserCurrentLanguage() {
   let language = navigator.languages?.[0] ?? navigator.language ?? "en";
+  language = language.toLocaleLowerCase();
 
   if (language.startsWith("en")) {
     language = "en";
