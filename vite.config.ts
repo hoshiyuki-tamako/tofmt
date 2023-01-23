@@ -5,7 +5,7 @@ import vue from "@vitejs/plugin-vue";
 import vuePugPlugin from "vue-pug-plugin";
 import vueJsx from "@vitejs/plugin-vue-jsx";
 import { createHtmlPlugin } from "vite-plugin-html";
-import { viteSingleFile } from "vite-plugin-singlefile"
+import { viteSingleFile } from "vite-plugin-singlefile";
 
 // https://vitejs.dev/config/
 export default defineConfig({
