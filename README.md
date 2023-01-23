@@ -1,6 +1,6 @@
 # TOF monster timetable
 
-for managing farming boss items
+for managing farming tof boss items
 
 ## requirement
 
