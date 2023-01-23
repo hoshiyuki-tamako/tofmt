@@ -63,7 +63,7 @@ export const useSettings = defineStore(
     const darkMode = useDark();
     const showNickName = ref(false);
     const viewMode = ref("byLine");
-    const autosave = ref(true);
+    const autosave = ref(false);
 
     // notification
     const showUserConnectNotification = ref(true);
