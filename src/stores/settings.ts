@@ -34,13 +34,31 @@ export const viewModes = {
   byBoss: "怪物群組",
 };
 
+function getUserCurrentLanguage() {
+  let language = navigator.languages?.[0] ?? navigator.language ?? "en";
+
+  if (language.startsWith("en")) {
+    language = "en";
+  } else if (language.startsWith("ja")) {
+    language = "ja";
+  } else if (language.startsWith("zh")) {
+    if (!["zh-tw", "zh-cn"].includes(language)) {
+      language = "zh-tw";
+    }
+  } else {
+    language = "en";
+  }
+
+  return language;
+}
+
 export const useSettings = defineStore(
   "settings",
   () => {
     // normal setting
     const id = ref(ulid().slice(0, 8));
     const targetId = ref("");
-    const language = ref("zh-tw");
+    const language = ref(getUserCurrentLanguage());
     const darkMode = useDark();
     const showNickName = ref(false);
     const viewMode = ref("byLine");
