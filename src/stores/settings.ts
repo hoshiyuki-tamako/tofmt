@@ -147,7 +147,7 @@ export const useSettings = defineStore(
           return zhTw;
         case "zh-cn":
           return zhCn;
-        case "ja-jp":
+        case "ja":
           return ja;
         default:
           return en;
