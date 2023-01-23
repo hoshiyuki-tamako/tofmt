@@ -1,6 +1,5 @@
 import { computed, reactive, ref } from "vue";
 import { defineStore } from "pinia";
-import { ulid } from "ulid";
 import Area from "@/logic/Area";
 import { useDark } from "@vueuse/core";
 // import { zhTw, zhCn, en, ja } from "element-plus/lib/locale";
@@ -53,11 +52,15 @@ function getUserCurrentLanguage() {
   return language;
 }
 
+function randomId() {
+  return Math.random().toString(36).slice(2).toLocaleUpperCase();
+}
+
 export const useSettings = defineStore(
   "settings",
   () => {
     // normal setting
-    const id = ref(ulid().slice(0, 8));
+    const id = ref(randomId());
     const targetId = ref("");
     const language = ref(getUserCurrentLanguage());
     const darkMode = useDark();
@@ -94,22 +97,26 @@ export const useSettings = defineStore(
 
     const importExportText = ref("");
 
-    // init
-    function resetMaxServerLine() {
+    // functions
+    const resetId = () => {
+      id.value = randomId();
+    };
+
+    const deleteSave = () => {
+      save.areas = "";
+    };
+
+    const resetMaxServerLine = () => {
       Object.keys(maxServerLine).forEach((k) => delete maxServerLine[k]);
       for (const [name, { maxLine }] of Object.entries(Area.defaultAreas)) {
         if (!maxServerLine[name]) {
           maxServerLine[name] = maxLine;
         }
       }
-    }
-    if (!Object.keys(maxServerLine).length) {
-      resetMaxServerLine();
-    }
+    };
 
-    // compute
     const resetSettings = () => {
-      id.value = ulid().slice(0, 8);
+      resetId();
       targetId.value = "";
       language.value = getUserCurrentLanguage();
       darkMode.value = useDark().value;
@@ -133,10 +140,7 @@ export const useSettings = defineStore(
       importExportText.value = "";
     };
 
-    const deleteSave = () => {
-      save.areas = "";
-    };
-
+    // compute
     const locale = computed(() => {
       switch (language.value) {
         case "zh-tw":
@@ -149,6 +153,11 @@ export const useSettings = defineStore(
           return en;
       }
     });
+
+    // init
+    if (!Object.keys(maxServerLine).length) {
+      resetMaxServerLine();
+    }
 
     return {
       id,
@@ -178,9 +187,10 @@ export const useSettings = defineStore(
       save,
       importExportText,
 
-      resetSettings,
+      resetId,
       deleteSave,
       resetMaxServerLine,
+      resetSettings,
 
       locale,
     };

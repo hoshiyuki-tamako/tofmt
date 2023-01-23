@@ -684,6 +684,9 @@ async function onClickResetSettings() {
     onClickCloseHosting();
     onClickCloseFollowing();
     onLanguageChange();
+    onChangeMonsterRespawnTime();
+    onChangeBossesExclude();
+    onChangeLineExcludeChange();
     ElMessage.success(t("成功重置設定"));
   } catch (e) {
     console.info(e);
@@ -883,10 +886,15 @@ el-config-provider(:locale="settings.locale")
               td {{ t("自動儲存 (離線/分享生效)") }}
               td
                 el-switch(v-model="settings.autosave")
-          el-input(v-model="settings.id" :disabled="!!serverState.connectionState" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
-            template(#prepend) ID
-          el-input(v-model="settings.targetId" :disabled="!!clientState.connectionState" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
-            template(#prepend) {{ t("目標 ID") }}
+          el-row
+            el-col
+              el-input(v-model="settings.id" :disabled="!!serverState.connectionState" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
+                template(#prepend) ID
+              el-button(@click="settings.resetId") {{ t("隨機 ID") }}
+          el-row
+            el-col
+              el-input(v-model="settings.targetId" :disabled="!!clientState.connectionState" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
+                template(#prepend) {{ t("目標 ID") }}
 
         el-tab-pane(:label="t('時間表')")
           table
