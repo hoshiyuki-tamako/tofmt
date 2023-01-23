@@ -6,7 +6,6 @@ import "element-plus/theme-chalk/dark/css-vars.css";
 import App from "./App.vue";
 import piniaPluginPersistedstate from "pinia-plugin-persistedstate";
 import router from "./router";
-import * as ElementPlusIconsVue from "@element-plus/icons-vue";
 import "./assets/main.sass";
 import { createI18n } from "vue-i18n";
 import { messages } from "./locale";
@@ -24,9 +23,6 @@ const i18n = createI18n({
 const app = createApp(App);
 
 app.use(ElementPlus);
-for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
-  app.component(key, component);
-}
 app.use(i18n);
 app.use(pinia);
 app.use(router);

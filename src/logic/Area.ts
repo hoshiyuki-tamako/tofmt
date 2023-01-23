@@ -104,9 +104,9 @@ export default class Area {
   })
   servers = [] as Server[];
 
-  #getServersCache = new LRU<string, Server[]>({ max: 1 });
-  #findServerCache = new LRU<number, Server>({ max: 256 });
-  #findBossCache = new LRU<string, BossEntity>({ max: 256 });
+  #largestServerLine?: number;
+  #serverLookup?: Record<number, Server>;
+  #getServersCache = new LRU<string, Server[]>({ max: 16 });
 
   constructor(name: string, servers: Server[] = []) {
     this.name = name;
@@ -124,36 +124,21 @@ export default class Area {
   }
 
   findServer(line: number) {
-    let server = this.#findServerCache.get(line);
-    if (!server) {
-      server = this.servers.find((s) => s.line === line);
-      if (server) {
-        this.#findServerCache.set(line, server);
-      }
-    }
-    return server;
+    this.#serverLookup ??= Enumerable.from(this.servers).toObject(
+      (server) => server.line,
+      (server) => server
+    );
+    return this.#serverLookup[line];
   }
 
   getLargestServerLine() {
-    return Enumerable.from(this.servers)
+    return (this.#largestServerLine ??= Enumerable.from(this.servers)
       .select((s) => s.line)
-      .max();
+      .max());
   }
 
-  findBoss(line: number, boss: BossEntity | string) {
-    if (boss instanceof BossEntity) {
-      return this.findServer(line)?.bosses.find((b) => b === boss);
-    } else {
-      const key = `${line}-${boss}`;
-      let b = this.#findBossCache.get(key);
-      if (!b) {
-        b = this.findServer(line)?.bosses.find((b) => b.name === boss);
-        if (b) {
-          this.#findBossCache.set(key, b);
-        }
-      }
-      return b;
-    }
+  findBoss(line: number, bossName: string) {
+    return this.findServer(line)?.findBoss(bossName);
   }
 
   setGlobalBossRespawnTime(minutes = 60) {
@@ -162,13 +147,11 @@ export default class Area {
         boss.respawnTime = dayjs.duration({ minutes });
       }
     }
-    this.clearCache();
     return this;
   }
 
   clearCache() {
-    this.#findBossCache.clear();
-    this.#findServerCache.clear();
+    this.#serverLookup = undefined;
     this.#getServersCache.clear();
     for (const server of this.servers) {
       server.clearCache();

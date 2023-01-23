@@ -245,13 +245,6 @@ function sendMonsterTable() {
   }
 }
 
-function clearAllState() {
-  for (const area of areas) {
-    area.clearCache();
-  }
-  forceUpdateTimetable.value = !forceUpdateTimetable.value;
-}
-
 async function receiveMonsterTable(rawData: Partial<SyncMessage>) {
   try {
     const data = await transformAndValidate(SyncMessage, rawData);
@@ -262,7 +255,6 @@ async function receiveMonsterTable(rawData: Partial<SyncMessage>) {
     areas = data.payload.areas.map((m) => plainToInstance(Area, m));
     bossesExclude.value = data.payload.bossesExclude;
     linesExclude.value = data.payload.linesExclude;
-    clearAllState();
     onChangeBossTab();
   } catch (e) {
     if (e instanceof MessageError) {
@@ -377,12 +369,13 @@ function updateBossInfo() {
 
 function updateNextLineSuggestServers(mapName: string, bossName = "") {
   const info = [] as BossInfo[];
+  const now = dayjs();
 
   for (const server of areas
     .find((a) => a.name === mapName)
     ?.getServers(linesExclude.value) ?? []) {
     for (const boss of server.getBosses(bossesExclude.value)) {
-      if (!boss.isAlive() || (bossName && boss.name !== bossName)) {
+      if (!boss.isAlive(now) || (bossName && boss.name !== bossName)) {
         continue;
       }
 
@@ -547,13 +540,14 @@ function onChangeAreaTab(name?: keyof typeof Area.defaultAreas) {
 
 function onChangeBossTab() {
   resetButtonTimeout();
+  const now = dayjs();
 
   for (const area of areas) {
     bossButtonStates[area.name] ??= {};
     for (const server of area.servers) {
       bossButtonStates[area.name][server.line] ??= {};
       for (const boss of server.bosses) {
-        const ms = boss.timeUntilRespawnMs();
+        const ms = boss.timeUntilRespawnMs(now);
         const isAlive = !ms;
         bossButtonStates[area.name][server.line][boss.name] = isAlive;
         if (!isAlive) {
@@ -620,9 +614,9 @@ async function onClickLoad() {
 
   try {
     areas = await importAreas(settings.save.areas);
-    clearAllState();
     onChangeBossTab();
     sendMonsterTable();
+    forceUpdateTimetable.value = !forceUpdateTimetable.value;
     ElMessage.success(t("成功讀取"));
   } catch (e) {
     console.error(e);
@@ -778,9 +772,9 @@ async function onClickImport() {
 
   try {
     areas = await importAreas(settings.importExportText);
-    clearAllState();
     onChangeBossTab();
     sendMonsterTable();
+    forceUpdateTimetable.value = !forceUpdateTimetable.value;
     ElMessage.success(t("成功導入"));
   } catch (e) {
     console.error(e);
@@ -1059,7 +1053,7 @@ el-config-provider(:locale="settings.locale")
                       el-button.monster-trace__button.monster-trace__button--name(type="danger") {{ t(boss.displayName(settings.showNickName)) }}
 
         el-tabs.monster-trace-tab(v-else-if="settings.viewMode === 'byBoss'" v-model="timetableTabs.bossActiveTab" @tab-change="onChangeBossTab" type="border-card")
-          el-tab-pane(v-for="_boss of area.servers[0].getBosses(bossesExclude)" :label="t(_boss.name)" :name="_boss.name" lazy)
+          el-tab-pane(v-for="_boss of area.servers[0].getBosses(bossesExclude)" :label="t(_boss.displayName(settings.showNickName))" :name="_boss.name" lazy)
             div.monster-trace__container
               div.monster-trace__button-container(v-for="line in Enumerable.from(area.getServers(linesExclude)).select((s) => s.line)")
                 template(v-for="boss of [area.findBoss(line, _boss.name)]")

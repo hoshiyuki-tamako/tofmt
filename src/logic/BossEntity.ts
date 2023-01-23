@@ -51,20 +51,20 @@ export default class BossEntity {
     this.respawnTime = respawnTime;
   }
 
-  isAlive() {
-    return dayjs().diff(this.killAt.add(this.respawnTime)) > 0;
+  isAlive(now = dayjs()) {
+    return now.diff(this.killAt.add(this.respawnTime)) > 0;
   }
 
   respawn() {
     this.killAt = dayjs.unix(0);
   }
 
-  kill() {
-    this.killAt = dayjs();
+  kill(now = dayjs()) {
+    this.killAt = now;
   }
 
-  timeUntilRespawnMs() {
-    const ms = this.killAt.add(this.respawnTime).diff(dayjs());
+  timeUntilRespawnMs(now = dayjs()) {
+    const ms = this.killAt.add(this.respawnTime).diff(now);
     return ms >= 0 ? ms : 0;
   }
 

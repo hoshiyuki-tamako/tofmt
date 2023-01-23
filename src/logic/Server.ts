@@ -1,3 +1,4 @@
+import Enumerable from "linq";
 import LRU from "lru-cache";
 import { Expose, Type } from "class-transformer";
 import { ArrayMaxSize, IsInt, Max, Min } from "class-validator";
@@ -17,6 +18,7 @@ export default class Server {
   })
   bosses = [] as BossEntity[];
 
+  #bossLookup?: Record<string, BossEntity>;
   #getBossesCache = new LRU<string, BossEntity[]>({ max: 256 });
 
   constructor(line: number, bosses: BossEntity[] = []) {
@@ -34,7 +36,17 @@ export default class Server {
     return bosses;
   }
 
+  findBoss(name: string) {
+    this.#bossLookup ??= Enumerable.from(this.bosses).toObject(
+      (boss) => boss.name,
+      (boss) => boss
+    );
+    return this.#bossLookup[name];
+  }
+
   clearCache() {
+    this.#bossLookup = undefined;
     this.#getBossesCache.clear();
+    return this;
   }
 }
