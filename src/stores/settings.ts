@@ -121,7 +121,7 @@ export const useSettings = defineStore(
       language.value = getUserCurrentLanguage();
       darkMode.value = useDark().value;
       showNickName.value = false;
-      viewMode.value = "byLine";
+      viewMode.value = "byBoss";
       autosave.value = false;
 
       showUserConnectNotification.value = true;
