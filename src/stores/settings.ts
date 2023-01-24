@@ -65,7 +65,7 @@ export const useSettings = defineStore(
     const language = ref(getUserCurrentLanguage());
     const darkMode = useDark();
     const showNickName = ref(false);
-    const viewMode = ref("byLine");
+    const viewMode = ref("byBoss");
     const autosave = ref(false);
 
     // notification
