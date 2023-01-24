@@ -598,7 +598,9 @@ function resetButtonTimeout() {
 
 async function save(showNotification = false) {
   try {
-    ElMessage(t("正在儲存"));
+    if (showNotification) {
+      ElMessage(t("正在儲存"));
+    }
     settings.save.areas = await exportAreas();
     if (showNotification) {
       ElMessage.success(t("成功儲存"));
