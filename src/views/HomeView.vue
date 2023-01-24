@@ -151,10 +151,15 @@ function onClickCloseHosting() {
 }
 
 function onClickFollowTable() {
-  if (!settings.id) {
+  if (!settings.targetId) {
     ElNotification.error(t("目標 ID 不能為空"));
     return;
   }
+
+  if (!settings.id) {
+    settings.resetId();
+  }
+
   onClickCloseFollowing();
   onClickCloseHosting();
 
@@ -1092,8 +1097,8 @@ el-config-provider(:locale="settings.locale")
         el-tooltip(:content="t('正在跟蹤')" placement="top-start")
           el-icon
             View
-      span.settings_menu-icon(v-if="serverState.connectionState") {{ settings.id }}
-      span.settings_menu-icon(v-if="clientState.connectionState === ConnectionState.connected") {{ settings.targetId }}
+      span.setting_menu__id(v-if="serverState.connectionState") {{ settings.id }}
+      span.setting_menu__id(v-if="clientState.connectionState === ConnectionState.connected") {{ settings.targetId }}
     br
     div
       el-tabs(v-model="timetableTabs.areaActiveTab" @tab-change="onChangeAreaTab" :key="forceUpdateTimetable" type="border-card")
@@ -1178,6 +1183,12 @@ el-config-provider(:locale="settings.locale")
 
 .settings_menu-icon
   margin-left: 12px
+
+.setting_menu__id
+  margin-left: 12px
+  text-overflow: ellipsis
+  overflow: hidden !important
+  white-space: nowrap
 
 .view-table-filters
   display: flex
