@@ -251,6 +251,7 @@ async function receiveMonsterTable(rawData: Partial<SyncMessage>) {
     bossesExclude.value = data.payload.bossesExclude;
     linesExclude.value = data.payload.linesExclude;
     onChangeBossTab();
+    forceUpdateTimetable.value = !forceUpdateTimetable.value;
   } catch (e) {
     if (e instanceof MessageError) {
       console.error(e);
