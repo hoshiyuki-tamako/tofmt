@@ -40,6 +40,9 @@ if (urlLocale && supportedLanguages.find(({ value }) => value === urlLocale)) {
 // others
 const md = new MobileDetect(window.navigator.userAgent);
 const packr = new Packr();
+function isMobileDevice() {
+  return !!(md.mobile() || md.tablet());
+}
 
 // servers
 type ConnectedPeerInfo = {
@@ -228,13 +231,7 @@ async function onClickAskStopFollowing() {
   }
 }
 
-function sendMonsterTable() {
-  const message = SyncMessage.create(
-    areas,
-    bossesExclude.value,
-    linesExclude.value
-  );
-
+function send<T>(message: T) {
   for (const conn of connections) {
     if (
       serverState.connectedPeers[conn.peer]?.connectionState ===
@@ -245,10 +242,14 @@ function sendMonsterTable() {
   }
 }
 
+function sendMonsterTable() {
+  send(SyncMessage.create(areas, bossesExclude.value, linesExclude.value));
+}
+
 async function receiveMonsterTable(rawData: Partial<SyncMessage>) {
   try {
     const data = await transformAndValidate(SyncMessage, rawData);
-    if (data.cmd !== "tofmt/sync") {
+    if (data.cmd !== SyncMessage.cmd) {
       throw new MessageError(`unknown command ${data.cmd}`);
     }
     // TODO class transformer bug/issue
@@ -285,6 +286,12 @@ const dialogs = reactive({
 });
 
 const forceUpdateTimetable = ref(false);
+
+const isMobileSize = ref(window.matchMedia("(max-width: 650px)").matches);
+window.addEventListener(
+  "resize",
+  () => (isMobileSize.value = window.matchMedia("(max-width: 650px)").matches)
+);
 
 const bossesExclude = ref(settings.bossesExclude as string[]);
 const linesExclude = ref(settings.linesExclude as number[]);
@@ -427,19 +434,43 @@ type AreaTableRow = {
   area: Area;
   server: Server;
   boss: BossEntity;
-  killAt: Date;
+  killAt: Date | null;
 };
 
 const areaTable = reactive({
   currentPage: 1,
-  sort: "",
-  order: "ascending",
+  sort: "killAt",
+  order: "descending",
+  pagerCount: 5,
+  rows: [] as AreaTableRow[],
   filters: {
     areas: [] as string[],
     lines: [] as number[],
     bosses: [] as string[],
   },
+  sortOptions: [
+    {
+      text: "地圖",
+      value: "area",
+    },
+    {
+      text: "線路",
+      value: "server",
+    },
+    {
+      text: "怪物名字",
+      value: "boss",
+    },
+    {
+      text: "擊殺時間",
+      value: "killAt",
+    },
+  ],
 });
+
+function setViewTableRows() {
+  areaTable.rows = areasAsTableWithLimit();
+}
 
 function areasAsTable() {
   const rows = [] as AreaTableRow[];
@@ -451,7 +482,7 @@ function areasAsTable() {
           area,
           server,
           boss,
-          killAt: boss.killAt.toDate(),
+          killAt: boss.killAt.unix() ? boss.killAt.toDate() : null,
         });
       }
     }
@@ -485,6 +516,10 @@ function areasAsTableWithFilter() {
       data = data.orderBy((row) => row.boss.killAt.unix());
   }
 
+  data = (data as Enumerable.IOrderedEnumerable<AreaTableRow>).thenByDescending(
+    (row) => row.server.line
+  );
+
   if (areaTable.order !== "ascending") {
     data = data.reverse();
   }
@@ -498,8 +533,8 @@ function areasAsTableWithLimit() {
     .toArray();
 }
 
-function areaTableOnDateChange(boss: BossEntity, date: Date) {
-  boss.killAt = dayjs(date);
+function areaTableOnDateChange(boss: BossEntity, date?: Date) {
+  boss.killAt = date ? dayjs(date) : dayjs.unix(0);
   onChangeBossTab();
   sendMonsterTable();
 }
@@ -537,7 +572,6 @@ function onChangeAreaTab(name?: keyof typeof Area.defaultAreas) {
 
   onChangeBossTab();
 }
-
 function onChangeBossTab() {
   resetButtonTimeout();
   const now = dayjs();
@@ -712,17 +746,17 @@ function onChangeBossesExclude() {
   sendMonsterTable();
 }
 
+function onChangeLineExcludeChange() {
+  linesExclude.value = settings.linesExclude;
+  onChangeAreaTab();
+  sendMonsterTable();
+}
+
 function onChangeMonsterRespawnTime() {
   for (const area of areas) {
     area.setGlobalBossRespawnTime(settings.monsterRespawnTime);
   }
   onChangeBossTab();
-  sendMonsterTable();
-}
-
-function onChangeLineExcludeChange() {
-  linesExclude.value = settings.linesExclude;
-  onChangeAreaTab();
   sendMonsterTable();
 }
 
@@ -814,7 +848,7 @@ onChangeAreaTab();
 <template lang="pug">
 el-config-provider(:locale="settings.locale")
   main.main
-    el-dialog(v-model="dialogs.settingDialogVisible" width="80%" :fullscreen="!!(md.mobile() || md.tablet())")
+    el-dialog(v-model="dialogs.settingDialogVisible" width="80%" :fullscreen="isMobileSize")
       el-tabs(lazy)
         el-tab-pane(:label="t('界面')")
           table.setting-table
@@ -940,7 +974,7 @@ el-config-provider(:locale="settings.locale")
       template(#footer)
         el-button(@click="dialogs.settingDialogVisible = false") {{ t("關閉") }}
 
-    el-dialog(v-model="dialogs.hostDialogVisible" width="80%" :fullscreen="!!(md.mobile() || md.tablet())")
+    el-dialog(v-model="dialogs.hostDialogVisible" width="80%" :fullscreen="isMobileSize")
       div
         el-row(:gutter="12")
           el-col(:span="16")
@@ -962,8 +996,10 @@ el-config-provider(:locale="settings.locale")
                 span(v-else) -
             el-table-column(prop="connectedAt" :label="t('連接時間')" sortable)
               template(#default="scope") {{ Intl.DateTimeFormat(settings.language,  { dateStyle: "long", timeStyle: "medium" }).format(scope.row.connectedAt.toDate()) }}
+      template(#footer)
+        el-button(@click="dialogs.hostDialogVisible = false") {{ t("關閉") }}
 
-    el-dialog(v-model="dialogs.connectDialogVisible" width="80%" :fullscreen="!!(md.mobile() || md.tablet())")
+    el-dialog(v-model="dialogs.connectDialogVisible" width="80%" :fullscreen="isMobileSize")
       div
         el-row(:gutter="12")
           el-col(:span="16")
@@ -972,25 +1008,41 @@ el-config-provider(:locale="settings.locale")
           el-col(:span="4")
             el-button(v-if="clientState.connectionState" @click="onClickCloseFollowing" type="danger") {{ t("取消跟蹤") }}
             el-button(v-else @click="onClickFollowTable" type="warning") {{ t("開始跟蹤") }}
+      template(#footer)
+        el-button(@click="dialogs.connectDialogVisible = false") {{ t("關閉") }}
 
-    el-dialog(v-model="dialogs.viewDialogVisible" width="80%" :fullscreen="!!(md.mobile() || md.tablet())")
+    el-dialog(v-model="dialogs.viewDialogVisible" width="80%" @open="setViewTableRows" :fullscreen="isMobileSize")
       div.view-table-filters
         div
           div {{ t("地圖") }}
           div
-            el-select(v-model="areaTable.filters.areas" placeholder=" " filterable multiple)
+            el-select(v-model="areaTable.filters.areas" placeholder=" " @change="setViewTableRows" filterable multiple)
               el-option(v-for="name of Object.keys(Area.defaultAreas)" :key="name" :label="t(name)" :value="name")
         div
           div {{ t("線路") }}
           div
-            el-select(v-model="areaTable.filters.lines" placeholder=" " filterable multiple)
+            el-select(v-model="areaTable.filters.lines" placeholder=" " @change="setViewTableRows" filterable multiple)
               el-option(v-for="name of Enumerable.range(1, areas[0].getLargestServerLine())" :key="name" :label="name" :value="name")
         div
           div {{ t("怪物名字") }}
           div
-            el-select(v-model="areaTable.filters.bosses" placeholder=" " filterable multiple)
+            el-select(v-model="areaTable.filters.bosses" placeholder=" " @change="setViewTableRows" filterable multiple)
               el-option(v-for="name of Area.getAllBossNames()" :key="name" :label="t(name)" :value="name")
-      el-table(:data="areasAsTableWithLimit()" table-layout="auto" @sort-change="areaTableOnSortChange")
+        div
+          div {{ t("排序") }}
+          div
+            el-select(v-model="areaTable.sort" placeholder=" " @change="setViewTableRows" filterable)
+              el-option(v-for="o of areaTable.sortOptions" :key="o.value" :label="t(o.text)" :value="o.value")
+      br
+      div.view-table-mobile__rows(v-if="isMobileSize")
+        div(v-for="row of areaTable.rows")
+          el-card
+            template(#header) {{ row.area.name }} {{ row.server.line }}
+            div.view-table-mobile__row-card-container
+              div {{ t(row.boss.displayName(settings.showNickName)) }}
+              div.view-table-mobile__time-edit-container
+                el-date-picker(type="datetime" v-model="row.killAt" @change="areaTableOnDateChange(row.boss, $event)" :disabled="!!clientState.connectionState")
+      el-table(v-else :data="areaTable.rows" table-layout="auto" @sort-change="areaTableOnSortChange")
         el-table-column(prop="area" :label="t('地圖')" sortable)
           template(#default="scope") {{ scope.row.area.name }}
         el-table-column(prop="server" :label="t('線路')" sortable)
@@ -1002,29 +1054,33 @@ el-config-provider(:locale="settings.locale")
         el-table-column(:label="t('修改時間')")
           template(#default="scope")
             el-date-picker(type="datetime" v-model="scope.row.killAt" @change="areaTableOnDateChange(scope.row.boss, $event)" :disabled="!!clientState.connectionState")
-      el-pagination(layout="prev, pager, next" v-model:current-page="areaTable.currentPage" :page-size="settings.areaTable.pageSize" :total="areasAsTableWithFilter().length")
+      br
+      el-pagination(layout="prev, pager, next" v-model:current-page="areaTable.currentPage" :page-size="settings.areaTable.pageSize" :total="areasAsTableWithFilter().length" :pager-count="areaTable.pagerCount" @current-change="setViewTableRows" background)
+      template(#footer)
+        el-button(@click="dialogs.viewDialogVisible = false") {{ t("關閉") }}
+
     div.action-menu
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
         div {{ t("設定") }}
         template(#reference)
           el-button(@click="dialogs.settingDialogVisible = true" :icon="Setting" type="primary" :title="t('設定')")
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
         div {{ t("存檔") }}
         template(#reference)
           el-button(@click="onClickSave" type="success" :icon="DocumentAdd" :title="t('存檔')")
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
         div {{ t("讀取") }}
         template(#reference)
           el-button(@click="onClickLoad" type="warning" :icon="Reading" :title="t('讀取')")
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
         div {{ t("查看") }}
         template(#reference)
           el-button(@click="onClickViewDialogVisible" type="primary" :icon="Search" :title="t('查看')")
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
         div {{ t("開場") }}
         template(#reference)
           el-button(@click="dialogs.hostDialogVisible = true" type="success" :icon="Share" :title="t('開場')")
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
         div {{ t("進場") }}
         template(#reference)
           el-button(@click="dialogs.connectDialogVisible = true" :icon="View" type="primary" :title="t('進場')")
@@ -1039,34 +1095,36 @@ el-config-provider(:locale="settings.locale")
       span.settings_menu-icon(v-if="serverState.connectionState") {{ settings.id }}
       span.settings_menu-icon(v-if="clientState.connectionState === ConnectionState.connected") {{ settings.targetId }}
     br
-    el-tabs(v-model="timetableTabs.areaActiveTab" @tab-change="onChangeAreaTab" :key="forceUpdateTimetable" type="border-card")
-      el-tab-pane(v-for="area of areas" :label="t(area.name)" :name="area.name" lazy)
+    div
+      el-tabs(v-model="timetableTabs.areaActiveTab" @tab-change="onChangeAreaTab" :key="forceUpdateTimetable" type="border-card")
+        el-tab-pane(v-for="area of areas" :label="t(area.name)" :name="area.name" lazy)
 
-        el-tabs.monster-trace-tab(v-if="settings.viewMode === 'byLine'" v-model="timetableTabs.bossActiveLineTab" @tab-change="onChangeBossTab" type="border-card")
-          el-tab-pane(v-for="server of area.getServers(linesExclude)" :label="`${server.line}`" :name="`${server.line}`" lazy)
-            div.monster-trace__container
-              div.monster-trace__button-container(v-for="boss in server.getBosses(bossesExclude)")
-                el-button.monster-trace__button.monster-trace__button--name(v-if="bossButtonStates[area.name][server.line][boss.name]" @click="toggle(area, server.line, boss)" :color="boss.color") {{ t(boss.displayName(settings.showNickName)) }}
-                template(v-else)
-                  el-popconfirm(:title="`${t('確認復活怪物')}?`" @confirm="toggle(area, server.line, boss)" width="auto")
-                    template(#reference)
-                      el-button.monster-trace__button.monster-trace__button--name(type="danger") {{ t(boss.displayName(settings.showNickName)) }}
-
-        el-tabs.monster-trace-tab(v-else-if="settings.viewMode === 'byBoss'" v-model="timetableTabs.bossActiveTab" @tab-change="onChangeBossTab" type="border-card")
-          el-tab-pane(v-for="_boss of area.servers[0].getBosses(bossesExclude)" :label="t(_boss.displayName(settings.showNickName))" :name="_boss.name" lazy)
-            div.monster-trace__container
-              div.monster-trace__button-container(v-for="line in Enumerable.from(area.getServers(linesExclude)).select((s) => s.line)")
-                template(v-for="boss of [area.findBoss(line, _boss.name)]")
-                  el-button.monster-trace__button(v-if="bossButtonStates[area.name][line][boss.name]" @click="toggle(area, line, boss)" :color="boss.color") {{ line }}
+          el-tabs.monster-trace-tab(v-if="settings.viewMode === 'byLine'" v-model="timetableTabs.bossActiveLineTab" @tab-change="onChangeBossTab" type="border-card")
+            el-tab-pane(v-for="server of area.getServers(linesExclude)" :label="`${server.line}`" :name="`${server.line}`" lazy)
+              div.monster-trace__container
+                div.monster-trace__button-container(v-for="boss in server.getBosses(bossesExclude)")
+                  el-button.monster-trace__button.monster-trace__button--name(v-if="bossButtonStates[area.name][server.line][boss.name]" @click="toggle(area, server.line, boss)" :color="boss.color") {{ t(boss.displayName(settings.showNickName)) }}
                   template(v-else)
-                    el-popconfirm(:title="`${t('確認復活怪物')}?`" @confirm="toggle(area, line, boss)" width="auto")
+                    el-popconfirm(:title="`${t('確認復活怪物')}?`" @confirm="toggle(area, server.line, boss)" width="auto")
                       template(#reference)
-                        el-button.monster-trace__button(type="danger") {{ line }}
+                        el-button.monster-trace__button.monster-trace__button--name(type="danger") {{ t(boss.displayName(settings.showNickName)) }}
+
+          el-tabs.monster-trace-tab(v-else-if="settings.viewMode === 'byBoss'" v-model="timetableTabs.bossActiveTab" @tab-change="onChangeBossTab" type="border-card")
+            el-tab-pane(v-for="_boss of area.servers[0].getBosses(bossesExclude)" :label="t(_boss.displayName(settings.showNickName))" :name="_boss.name" lazy)
+              div.monster-trace__container
+                div.monster-trace__button-container(v-for="line in Enumerable.from(area.getServers(linesExclude)).select((s) => s.line)")
+                  template(v-for="boss of [area.findBoss(line, _boss.name)]")
+                    el-button.monster-trace__button(v-if="bossButtonStates[area.name][line][boss.name]" @click="toggle(area, line, boss)" :color="boss.color") {{ line }}
+                    template(v-else)
+                      el-popconfirm(:title="`${t('確認復活怪物')}?`" @confirm="toggle(area, line, boss)" width="auto")
+                        template(#reference)
+                          el-button.monster-trace__button(type="danger") {{ line }}
     br
     div.boss-info-container
       div(v-if="settings.viewMode === 'byBoss' && settings.showBossCurrentTypeSuggestion")
-        div.next-server-suggest
-          h4 {{ t("線路建議 (當前怪物)") }}
+        el-card
+          template(#header)
+            span.boss-info__header {{ t("線路建議 (當前怪物)") }}
           el-row(v-for="info of nextLineSuggestServerByBoss[timetableTabs.bossActiveTab]")
             el-col(v-if="settings.language.startsWith('en')")
               span {{ t("線") }}
@@ -1077,8 +1135,9 @@ el-config-provider(:locale="settings.locale")
               span {{ t("線") }}
               span  / {{ t(info.boss.displayName(settings.showNickName)) }}
       div(v-if="settings.showBossSuggestion")
-        div.next-server-suggest
-          h4 {{ t("線路建議") }}
+        el-card
+          template(#header)
+            span.boss-info__header {{ t("線路建議") }}
           el-row(v-for="info of nextLineSuggestServer")
             el-col(v-if="settings.language.startsWith('en')")
               span {{ t("線") }}
@@ -1089,8 +1148,9 @@ el-config-provider(:locale="settings.locale")
               span {{ t("線") }}
               span  / {{ t(info.boss.displayName(settings.showNickName)) }}
       div(v-if="settings.showBossInfoRecentKilled")
-        div.recent-boss-kill
-          h4 {{ t("最近死亡怪物") }}
+        el-card.recent-boss-kill
+          template(#header)
+            span.boss-info__header {{ t("最近死亡怪物") }}
           el-row(v-for="info of recentBossKills")
             el-col(v-if="settings.language.startsWith('en')")
               span {{ t("線") }}
@@ -1133,6 +1193,18 @@ el-config-provider(:locale="settings.locale")
     > div:nth-child(odd)
         margin-right: 6px
 
+.view-table-mobile__rows
+  display: flex
+  flex-direction: column
+  row-gap: 12px
+
+.view-table-mobile__row-card-container
+  display: flex
+  flex-grow: column
+  align-items: center
+  .view-table-mobile__time-edit-container
+    margin-left: auto
+
 .monster-trace-tab
   margin: -15px
 
@@ -1143,7 +1215,7 @@ el-config-provider(:locale="settings.locale")
   col-gap: 12px
   row-gap: 12px
 
-@media (max-width: 630px)
+@media (max-width: 650px)
   .monster-trace__container
     width: 100%
     display: flex
@@ -1160,6 +1232,9 @@ el-config-provider(:locale="settings.locale")
   width: auto
   margin-left: 12px
 
+.boss-info__header
+  font-weight: bold
+
 .next-server-suggest__line-text
   padding-left: 6px
   padding-right: 6px
@@ -1170,4 +1245,14 @@ el-config-provider(:locale="settings.locale")
   flex-direction: row
   flex-wrap: wrap
   column-gap: 24px
+  row-gap: 24px
+  align-items: stretch
+  .el-card
+    min-height: 100%
+@media (max-width: 650px)
+  .boss-info-container
+    > div
+      width: 100%
+    .el-card
+      width: 100%
 </style>
