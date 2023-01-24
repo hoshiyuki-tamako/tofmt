@@ -78,9 +78,7 @@ function getPeerId(id: string) {
 
 // server functions
 function onServerError(e: Error) {
-  ElNotification.error({
-    message: e.message,
-  });
+  ElNotification.error(e.message);
 }
 
 function onClickHostTable() {
@@ -88,9 +86,7 @@ function onClickHostTable() {
   onClickCloseFollowing();
 
   if (!settings.id) {
-    ElNotification.error({
-      message: t("ID 不能為空"),
-    });
+    ElNotification.error(t("ID 不能為空"));
     return;
   }
 
@@ -156,9 +152,7 @@ function onClickCloseHosting() {
 
 function onClickFollowTable() {
   if (!settings.id) {
-    ElNotification.error({
-      message: t("目標 ID 不能為空"),
-    });
+    ElNotification.error(t("目標 ID 不能為空"));
     return;
   }
   onClickCloseFollowing();
@@ -548,6 +542,7 @@ function areaTableOnSortChange({
 }) {
   areaTable.sort = prop;
   areaTable.order = order;
+  setViewTableRows();
 }
 
 // events
@@ -603,6 +598,7 @@ function resetButtonTimeout() {
 
 async function save(showNotification = false) {
   try {
+    ElMessage(t("正在儲存"));
     settings.save.areas = await exportAreas();
     if (showNotification) {
       ElMessage.success(t("成功儲存"));
@@ -805,6 +801,7 @@ async function onClickImport() {
   }
 
   try {
+    ElMessage(t("導入中"));
     areas = await importAreas(settings.importExportText);
     onChangeBossTab();
     sendMonsterTable();
@@ -925,7 +922,7 @@ el-config-provider(:locale="settings.locale")
                 template(#prepend) {{ t("目標 ID") }}
 
         el-tab-pane(:label="t('時間表')")
-          table
+          table(style="width: 100%")
             tr
               td {{ t("復活時間") }}
               td
@@ -934,14 +931,14 @@ el-config-provider(:locale="settings.locale")
             tr
               td {{ t("隱藏怪物") }}
               td
-                el-select(v-model="settings.bossesExclude" @change="onChangeBossesExclude" filterable multiple fit-input-width)
+                el-select(v-model="settings.bossesExclude" @change="onChangeBossesExclude" filterable multiple style="width: 100%")
                   el-option(v-for="name of Area.getAllBossNames()" :key="name" :label="t(name)" :value="name")
                 el-button(@click="onClickHideAllMonster") {{ t("隱藏所有怪物") }}
                 el-button(@click="onClickShowAllMonster" style="margin-left: 0") {{ t("顯示所有怪物") }}
             tr
               td {{ t("隱藏線路") }}
               td
-                el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" filterable multiple fit-input-width)
+                el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" filterable multiple  style="width: 100%")
                   el-option(v-for="line of Enumerable.range(1, areas[0].getLargestServerLine())" :key="line" :label="`${line}`" :value="line" )
           el-divider
           small *{{ t("更改線路上限需要手動重置時間表") }}
