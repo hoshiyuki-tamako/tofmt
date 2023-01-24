@@ -1,7 +1,7 @@
 import { Expose } from "class-transformer";
 import { IsInt, IsString, MaxLength, Min } from "class-validator";
 
-export default class Message {
+export default abstract class Message {
   @Expose()
   @IsInt()
   @Min(1)

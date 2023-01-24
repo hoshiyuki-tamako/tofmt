@@ -13,21 +13,22 @@ import Message from "./Message";
 import Area from "../Area";
 
 export default class SyncMessage extends Message {
+  static cmd = "tofmt/sync";
+
   static create(
     areas: Area[],
     bossesExclude = [] as string[],
     linesExclude = [] as number[]
   ) {
-    const message = {
+    return {
       version: 1,
-      cmd: "tofmt/sync",
+      cmd: this.cmd,
       payload: {
         areas: areas.map((m) => instanceToPlain(m)),
         bossesExclude,
         linesExclude,
       },
     };
-    return message;
   }
 
   @Expose()
