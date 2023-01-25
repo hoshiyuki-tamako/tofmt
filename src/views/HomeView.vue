@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from "vue";
+import { computed, reactive, ref } from "vue";
 import Enumerable from "linq";
 import type Server from "@/logic/Server";
 import { ElMessage, ElMessageBox, ElNotification } from "element-plus";
@@ -9,8 +9,7 @@ import { useSettings, viewModes, supportedLanguages } from "@/stores/settings";
 import dayjs from "dayjs";
 import type BossEntity from "@/logic/BossEntity";
 import Area from "@/logic/Area";
-import { plainToInstance } from "class-transformer";
-import { transformAndValidate } from "class-transformer-validator";
+import { transformAndValidateSync } from "class-transformer-validator";
 import MobileDetect from "mobile-detect";
 import SyncMessage from "@/logic/network/SyncMessage";
 import MessageError from "@/exceptions/MessageError";
@@ -75,6 +74,9 @@ const clientState = reactive({
 function getPeerId(id: string) {
   return `${connectionPrefix}-${id}`;
 }
+const hasConnection = computed(() => {
+  return !!(serverState.connectionState || clientState.connectionState);
+});
 
 // server functions
 function onServerError(e: Error) {
@@ -245,14 +247,13 @@ function sendMonsterTable() {
   send(SyncMessage.create(areas, bossesExclude.value, linesExclude.value));
 }
 
-async function receiveMonsterTable(rawData: Partial<SyncMessage>) {
+function receiveMonsterTable(rawData: Partial<SyncMessage>) {
   try {
-    const data = await transformAndValidate(SyncMessage, rawData);
+    const data = transformAndValidateSync(SyncMessage, rawData);
     if (data.cmd !== SyncMessage.cmd) {
       throw new MessageError(`unknown command ${data.cmd}`);
     }
-    // TODO class transformer bug/issue
-    areas = data.payload.areas.map((m) => plainToInstance(Area, m));
+    areas = data.payload.areas;
     bossesExclude.value = data.payload.bossesExclude;
     linesExclude.value = data.payload.linesExclude;
     onChangeBossTab();
@@ -773,12 +774,11 @@ async function importAreas(base64Data: string) {
   const rawData = packr.unpack(
     simple.decompress(new Uint8Array(decode(base64Data.trim())))
   );
-  const data = await transformAndValidate(
+  const data = transformAndValidateSync(
     SyncMessage,
     rawData as Partial<SyncMessage>
   );
-  // TODO class transformer bug/issue
-  return data.payload.areas.map((m) => plainToInstance(Area, m));
+  return data.payload.areas;
 }
 
 function exportAreas(): Promise<string> {
@@ -798,6 +798,9 @@ function exportAreas(): Promise<string> {
   });
 }
 
+const importing = ref(false);
+const exporting = ref(false);
+
 async function onClickImport() {
   if (!settings.importExportText) {
     return;
@@ -809,6 +812,7 @@ async function onClickImport() {
   }
 
   try {
+    importing.value = true;
     ElMessage(t("導入中"));
     areas = await importAreas(settings.importExportText);
     onChangeBossTab();
@@ -818,12 +822,22 @@ async function onClickImport() {
   } catch (e) {
     console.error(e);
     ElNotification.error(t("格式錯誤"));
+  } finally {
+    importing.value = false;
   }
 }
 
 async function onClickExport() {
-  settings.importExportText = await exportAreas();
-  ElMessage.success(t("成功導出"));
+  try {
+    exporting.value = true;
+    ElMessage(t("導出中"));
+    settings.importExportText = await exportAreas();
+    ElMessage.success(t("成功導出"));
+  } catch (e) {
+    console.error(e);
+  } finally {
+    exporting.value = false;
+  }
 }
 
 function onClickViewDialogVisible() {
@@ -921,12 +935,12 @@ el-config-provider(:locale="settings.locale")
                 el-switch(v-model="settings.autosave")
           el-row
             el-col
-              el-input(v-model="settings.id" :disabled="!!serverState.connectionState" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
+              el-input(v-model="settings.id" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
                 template(#prepend) ID
-              el-button(@click="settings.resetId") {{ t("隨機 ID") }}
+              el-button(@click="settings.resetId" :disabled="hasConnection") {{ t("隨機 ID") }}
           el-row
             el-col
-              el-input(v-model="settings.targetId" :disabled="!!clientState.connectionState" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
+              el-input(v-model="settings.targetId" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
                 template(#prepend) {{ t("目標 ID") }}
 
         el-tab-pane(:label="t('時間表')")
@@ -965,7 +979,7 @@ el-config-provider(:locale="settings.locale")
           div.setting-row
             el-button(@click="onClickImport") {{ t("導入") }}
             el-button(@click="onClickExport") {{ t("導出") }}
-          div.setting-row
+          div.setting-row(v-loading="importing || exporting")
             el-input(v-model="settings.importExportText" :rows="16" type="textarea")
 
         el-tab-pane(:label="t('重置')")
@@ -983,7 +997,7 @@ el-config-provider(:locale="settings.locale")
       div
         el-row(:gutter="12")
           el-col(:span="16")
-            el-input(v-model="settings.id" :disabled="!!serverState.connectionState" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
+            el-input(v-model="settings.id" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
               template(#prepend) ID
           el-col(:span="4")
             el-button(v-if="serverState.connectionState" @click="onClickCloseHosting" type="danger") {{ t("關閉分享") }}
@@ -1008,7 +1022,7 @@ el-config-provider(:locale="settings.locale")
       div
         el-row(:gutter="12")
           el-col(:span="16")
-            el-input(v-model="settings.targetId" :disabled="!!clientState.connectionState" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
+            el-input(v-model="settings.targetId" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
               template(#prepend) {{ t("目標 ID") }}
           el-col(:span="4")
             el-button(v-if="clientState.connectionState" @click="onClickCloseFollowing" type="danger") {{ t("取消跟蹤") }}

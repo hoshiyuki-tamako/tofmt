@@ -21,7 +21,7 @@ export default class Server {
   #bossLookup?: Record<string, BossEntity>;
   #getBossesCache = new LRU<string, BossEntity[]>({ max: 256 });
 
-  constructor(line: number, bosses: BossEntity[] = []) {
+  constructor(line = 0, bosses: BossEntity[] = []) {
     this.line = line;
     this.bosses = bosses;
   }

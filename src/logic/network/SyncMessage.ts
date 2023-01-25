@@ -20,18 +20,17 @@ export default class SyncMessage extends Message {
     bossesExclude = [] as string[],
     linesExclude = [] as number[]
   ) {
-    return {
-      version: 1,
-      cmd: this.cmd,
-      payload: {
-        areas: areas.map((m) => instanceToPlain(m)),
-        bossesExclude,
-        linesExclude,
-      },
-    };
+    const message = new this();
+    message.payload.areas = areas;
+    message.payload.bossesExclude = bossesExclude;
+    message.payload.linesExclude = linesExclude;
+    return instanceToPlain(message);
   }
 
+  cmd = SyncMessage.cmd;
+
   @Expose()
+  @Type(() => MTPayload)
   @IsDefined()
   payload = new MTPayload();
 }

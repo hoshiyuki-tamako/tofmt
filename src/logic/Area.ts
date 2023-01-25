@@ -108,7 +108,7 @@ export default class Area {
   #serverLookup?: Record<number, Server>;
   #getServersCache = new LRU<string, Server[]>({ max: 16 });
 
-  constructor(name: string, servers: Server[] = []) {
+  constructor(name = "", servers: Server[] = []) {
     this.name = name;
     this.servers = servers;
   }

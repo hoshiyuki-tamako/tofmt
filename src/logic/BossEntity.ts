@@ -40,7 +40,7 @@ export default class BossEntity {
   color = "";
 
   constructor(
-    name: string,
+    name = "",
     nickName = "",
     color = "",
     respawnTime = BossEntity.defaultRespawnTime
