@@ -294,9 +294,7 @@ const forceUpdateTimetable = ref(false);
 const forceUpdateSettingSelectExcludeMenu = ref(false);
 
 const md = new MobileDetect(window.navigator.userAgent);
-function isMobileDevice() {
-  return !!(md.mobile() || md.tablet());
-}
+const isMobileDevice = !!(md.mobile() || md.tablet());
 const isMobileSize = ref(window.matchMedia("(max-width: 650px)").matches);
 window.addEventListener("resize", () => {
   isMobileSize.value = window.matchMedia("(max-width: 650px)").matches;
@@ -929,7 +927,7 @@ el-config-provider(:locale="settings.locale")
             el-input(v-model="settings.targetId" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
               template(#prepend) {{ t("目標 ID") }}
 
-        el-tab-pane(:label="t('時間表')" :key="forceUpdateSettingSelectExcludeMenu" name="bossInfo" lazy)
+        el-tab-pane(:label="t('時間表')" name="bossInfo" lazy)
           table.setting-table.setting-timetable-table
             tr
               td {{ t("復活時間") }}
@@ -939,15 +937,23 @@ el-config-provider(:locale="settings.locale")
             tr
               td {{ t("隱藏怪物") }}
               td
-                el-select(v-model="settings.bossesExclude" @change="onChangeBossesExclude" filterable multiple style="width: 100%")
-                  el-option(v-for="name of Area.getAllBossNames()" :key="name" :label="t(name)" :value="name")
+                template(v-if="isMobileDevice")
+                  el-select(v-model="settings.bossesExclude" @change="onChangeBossesExclude" filterable multiple style="width: 100%")
+                    el-option(v-for="name of Area.getAllBossNames()" :key="name" :label="t(name)" :value="name")
+                template(v-else)
+                  el-select(v-model="settings.bossesExclude" @change="onChangeBossesExclude" :key="forceUpdateSettingSelectExcludeMenu" filterable multiple style="width: 100%")
+                      el-option(v-for="name of Area.getAllBossNames()" :key="name" :label="t(name)" :value="name")
                 el-button(@click="onClickHideAllMonster") {{ t("隱藏所有怪物") }}
                 el-button(@click="onClickShowAllMonster" style="margin-left: 0") {{ t("顯示所有怪物") }}
             tr
               td {{ t("隱藏線路") }}
               td
-                el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" filterable multiple style="width: 100%")
-                  el-option(v-for="line of Enumerable.range(1, areas[0].getLargestServerLine())" :key="line" :label="`${line}`" :value="line" )
+                template(v-if="isMobileDevice")
+                  el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" filterable multiple style="width: 100%")
+                    el-option(v-for="line of Enumerable.range(1, areas[0].getLargestServerLine())" :key="line" :label="`${line}`" :value="line" )
+                template(v-else)
+                  el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" :key="forceUpdateSettingSelectExcludeMenu" filterable multiple style="width: 100%")
+                      el-option(v-for="line of Enumerable.range(1, areas[0].getLargestServerLine())" :key="line" :label="`${line}`" :value="line" )
           el-divider
           small *{{ t("更改線路上限需要手動重置時間表") }}
           br
@@ -1065,27 +1071,27 @@ el-config-provider(:locale="settings.locale")
         el-button(@click="dialogs.viewDialogVisible = false") {{ t("關閉") }}
 
     div.action-menu
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice")
         div {{ t("設定") }}
         template(#reference)
           el-button(@click="dialogs.settingDialogVisible = true" :icon="Setting" type="primary" :title="t('設定')")
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice")
         div {{ t("存檔") }}
         template(#reference)
           el-button(@click="onClickSave" type="success" :icon="DocumentAdd" :title="t('存檔')")
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice")
         div {{ t("讀取") }}
         template(#reference)
           el-button(@click="onClickLoad" type="warning" :icon="Reading" :title="t('讀取')")
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice")
         div {{ t("查看") }}
         template(#reference)
           el-button(@click="onClickViewDialogVisible" type="primary" :icon="Search" :title="t('查看')")
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice")
         div {{ t("開場") }}
         template(#reference)
           el-button(@click="dialogs.hostDialogVisible = true" type="success" :icon="Share" :title="t('開場')")
-      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice()")
+      el-popover(placement="top-start" trigger="hover" popper-class="action-menu__buttons-popover" :disabled="isMobileDevice")
         div {{ t("進場") }}
         template(#reference)
           el-button(@click="dialogs.connectDialogVisible = true" :icon="View" type="primary" :title="t('進場')")
