@@ -1,18 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
-import Enumerable from "linq";
-import type Server from "@/logic/Server";
 import { ElMessage, ElMessageBox, ElNotification } from "element-plus";
-import Peer from "peerjs";
-import type { DataConnection } from "peerjs";
 import { useSettings, viewModes, supportedLanguages } from "@/stores/settings";
-import dayjs from "dayjs";
-import type BossEntity from "@/logic/BossEntity";
-import Area from "@/logic/Area";
 import { transformAndValidateSync } from "class-transformer-validator";
-import MobileDetect from "mobile-detect";
-import SyncMessage from "@/logic/network/SyncMessage";
-import MessageError from "@/exceptions/MessageError";
 import {
   Setting,
   Share,
@@ -22,9 +12,21 @@ import {
   Reading,
 } from "@element-plus/icons-vue";
 import { Packr } from "msgpackr";
-import { encode, decode } from "base64-arraybuffer";
-import { ZstdCodec } from "zstd-codec";
 import { useI18n } from "vue-i18n";
+// @ts-expect-error TS2307
+import { Zstd } from "@hpcc-js/wasm/zstd";
+
+import Enumerable from "linq";
+import Peer from "peerjs";
+import dayjs from "dayjs";
+import Area from "@/logic/Area";
+import MobileDetect from "mobile-detect";
+import SyncMessage from "@/logic/network/SyncMessage";
+import MessageError from "@/exceptions/MessageError";
+
+import type Server from "@/logic/Server";
+import type { DataConnection } from "peerjs";
+import type BossEntity from "@/logic/BossEntity";
 
 // stores
 const settings = useSettings();
@@ -259,12 +261,7 @@ function receiveMonsterTable(rawData: Partial<SyncMessage>) {
     onChangeBossTab();
     forceUpdateTimetable.value = !forceUpdateTimetable.value;
   } catch (e) {
-    if (e instanceof MessageError) {
-      console.error(e);
-    } else {
-      console.error("receive data structure error", e);
-    }
-
+    console.error(e);
     ElNotification.error(t("格式錯誤"));
     followTableCleanUp();
   }
@@ -294,8 +291,8 @@ window.addEventListener(
   () => (isMobileSize.value = window.matchMedia("(max-width: 650px)").matches)
 );
 
-const bossesExclude = ref(settings.bossesExclude as string[]);
-const linesExclude = ref(settings.linesExclude as number[]);
+const bossesExclude = ref(settings.bossesExclude);
+const linesExclude = ref(settings.linesExclude);
 
 type BossInfo = {
   server: Server;
@@ -473,27 +470,23 @@ function setViewTableRows() {
   areaTable.rows = areasAsTableWithLimit();
 }
 
-function areasAsTable() {
-  const rows = [] as AreaTableRow[];
-
+function* areasAsTable() {
   for (const area of areas) {
     for (const server of area.servers) {
       for (const boss of server.bosses) {
-        rows.push({
+        yield {
           area,
           server,
           boss,
           killAt: boss.killAt.unix() ? boss.killAt.toDate() : null,
-        });
+        };
       }
     }
   }
-
-  return rows;
 }
 
 function areasAsTableWithFilter() {
-  let data = Enumerable.from(areasAsTable()).where(
+  const data = Enumerable.from(areasAsTable()).where(
     (row) =>
       (!areaTable.filters.areas.length ||
         areaTable.filters.areas.includes(row.area.name)) &&
@@ -503,28 +496,22 @@ function areasAsTableWithFilter() {
         areaTable.filters.bosses.includes(row.boss.name))
   );
 
-  switch (areaTable.sort) {
-    case "area":
-      data = data.orderBy((row) => row.area.name);
-      break;
-    case "server":
-      data = data.orderBy((row) => row.server.line);
-      break;
-    case "boss":
-      data = data.orderBy((row) => row.boss.name);
-      break;
-    default:
-      data = data.orderBy((row) => row.boss.killAt.unix());
-  }
+  const dataOrdered = (() => {
+    switch (areaTable.sort) {
+      case "area":
+        return data.orderBy((row) => row.area.name);
+      case "server":
+        return data.orderBy((row) => row.server.line);
+      case "boss":
+        return data.orderBy((row) => row.boss.name);
+      default:
+        return data.orderBy((row) => row.boss.killAt.unix());
+    }
+  })().thenByDescending((row) => row.server.line);
 
-  data = (data as Enumerable.IOrderedEnumerable<AreaTableRow>).thenByDescending(
-    (row) => row.server.line
-  );
-
-  if (areaTable.order !== "ascending") {
-    data = data.reverse();
-  }
-  return data.toArray();
+  return areaTable.order === "ascending"
+    ? dataOrdered.toArray()
+    : dataOrdered.reverse().toArray();
 }
 
 function areasAsTableWithLimit() {
@@ -574,6 +561,7 @@ function onChangeAreaTab(name?: keyof typeof Area.defaultAreas) {
 
   onChangeBossTab();
 }
+
 function onChangeBossTab() {
   resetButtonTimeout();
   const now = dayjs();
@@ -713,9 +701,9 @@ async function onClickResetSettings() {
     await ElMessageBox.confirm(`${t("是否重置設定")}?`, "", {
       type: "warning",
     });
-    settings.resetSettings();
     onClickCloseHosting();
     onClickCloseFollowing();
+    settings.resetSettings();
     onLanguageChange();
     onChangeMonsterRespawnTime();
     onChangeBossesExclude();
@@ -766,36 +754,26 @@ function onChangeMonsterRespawnTime() {
 }
 
 async function importAreas(base64Data: string) {
-  const simple = await new Promise((resolve) => {
-    ZstdCodec.run(({ Simple }) => {
-      resolve(new Simple());
-    });
-  });
-  const rawData = packr.unpack(
-    simple.decompress(new Uint8Array(decode(base64Data.trim())))
+  const zstd = await Zstd.load();
+
+  const decompressed = zstd.decompress(
+    new Uint8Array(
+      atob(base64Data)
+        .split("")
+        .map((c) => c.charCodeAt(0))
+    )
   );
-  const data = transformAndValidateSync(
-    SyncMessage,
-    rawData as Partial<SyncMessage>
-  );
+  const rawData = packr.unpack(decompressed) as Partial<SyncMessage>;
+  const data = transformAndValidateSync(SyncMessage, rawData);
   return data.payload.areas;
 }
 
-function exportAreas(): Promise<string> {
-  return new Promise((resolve, reject) => {
-    ZstdCodec.run(({ Simple }) => {
-      try {
-        const simple = new Simple();
-        const compressed = simple.compress(
-          packr.pack(SyncMessage.create(areas)),
-          22
-        );
-        resolve(encode(compressed));
-      } catch (e) {
-        reject(e);
-      }
-    });
-  });
+async function exportAreas(): Promise<string> {
+  const zstd = await Zstd.load();
+
+  const pack = packr.pack(SyncMessage.create(areas));
+  const compressed = zstd.compress(pack);
+  return btoa(String.fromCharCode.apply(null, compressed));
 }
 
 const importing = ref(false);
@@ -866,10 +844,10 @@ onChangeAreaTab();
 
 <template lang="pug">
 el-config-provider(:locale="settings.locale")
-  main.main
+  el-main
     el-dialog(v-model="dialogs.settingDialogVisible" width="80%" :fullscreen="isMobileSize")
-      el-tabs(lazy)
-        el-tab-pane(:label="t('界面')")
+      el-tabs
+        el-tab-pane(:label="t('界面')" lazy)
           table.setting-table
             tr
               td {{ t("語言") }}
@@ -927,7 +905,7 @@ el-config-provider(:locale="settings.locale")
               td {{ t("怪物知訊數量") }}
               td
                 el-input-number(v-model="settings.bossInfoCount" :min="1" :max="10" :step="1" @change="updateBossInfo" step-strictly)
-        el-tab-pane(:label="t('功能')")
+        el-tab-pane(:label="t('功能')" lazy)
           table.setting-table
             tr
               td {{ t("自動儲存 (離線/分享生效)") }}
@@ -943,7 +921,7 @@ el-config-provider(:locale="settings.locale")
               el-input(v-model="settings.targetId" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
                 template(#prepend) {{ t("目標 ID") }}
 
-        el-tab-pane(:label="t('時間表')")
+        el-tab-pane(:label="t('時間表')" lazy)
           table(style="width: 100%")
             tr
               td {{ t("復活時間") }}
@@ -967,7 +945,7 @@ el-config-provider(:locale="settings.locale")
           br
           br
           table
-            tr(v-for="name of Object.keys(Area.defaultAreas)")
+            tr(v-for="name of Object.keys(Area.defaultAreas)" :key="name")
               td {{ t(name) }}
               td
                 el-input-number(v-model="settings.maxServerLine[name]" :min="1" :max="255" :step="1" step-strictly)
@@ -975,14 +953,14 @@ el-config-provider(:locale="settings.locale")
           el-divider
           el-button(@click="onClickResetMerge" type="warning") {{ t("以目前時間重置時間表") }}
 
-        el-tab-pane(:label="`${t('導入')}/${t('導出')}`")
+        el-tab-pane(:label="`${t('導入')}/${t('導出')}`" lazy)
           div.setting-row
             el-button(@click="onClickImport") {{ t("導入") }}
             el-button(@click="onClickExport") {{ t("導出") }}
           div.setting-row(v-loading="importing || exporting")
             el-input(v-model="settings.importExportText" :rows="16" type="textarea")
 
-        el-tab-pane(:label="t('重置')")
+        el-tab-pane(:label="t('重置')" lazy)
           el-button(@click="onClickReset" type="danger") {{ t("重置時間表") }}
           br
           br
@@ -1054,7 +1032,7 @@ el-config-provider(:locale="settings.locale")
               el-option(v-for="o of areaTable.sortOptions" :key="o.value" :label="t(o.text)" :value="o.value")
       br
       div.view-table-mobile__rows(v-if="isMobileSize")
-        div(v-for="row of areaTable.rows")
+        div(v-for="row of areaTable.rows" :key="`${row.area.name}${row.server.line}${row.boss.name}`")
           el-card
             template(#header) {{ row.area.name }} {{ row.server.line }}
             div.view-table-mobile__row-card-container
@@ -1063,7 +1041,7 @@ el-config-provider(:locale="settings.locale")
                 el-date-picker(type="datetime" v-model="row.killAt" @change="areaTableOnDateChange(row.boss, $event)" :disabled="!!clientState.connectionState")
       el-table(v-else :data="areaTable.rows" table-layout="auto" @sort-change="areaTableOnSortChange")
         el-table-column(prop="area" :label="t('地圖')" sortable)
-          template(#default="scope") {{ scope.row.area.name }}
+          template(#default="scope") {{ t(scope.row.area.name) }}
         el-table-column(prop="server" :label="t('線路')" sortable)
           template(#default="scope") {{ scope.row.server.line }}
         el-table-column(prop="boss" :label="t('怪物名字')" sortable)
@@ -1116,12 +1094,12 @@ el-config-provider(:locale="settings.locale")
     br
     div
       el-tabs(v-model="timetableTabs.areaActiveTab" @tab-change="onChangeAreaTab" :key="forceUpdateTimetable" type="border-card")
-        el-tab-pane(v-for="area of areas" :label="t(area.name)" :name="area.name" lazy)
+        el-tab-pane(v-for="area of areas" :label="t(area.name)" :name="area.name" :key="area.name" lazy)
 
           el-tabs.monster-trace-tab(v-if="settings.viewMode === 'byLine'" v-model="timetableTabs.bossActiveLineTab" @tab-change="onChangeBossTab" type="border-card")
-            el-tab-pane(v-for="server of area.getServers(linesExclude)" :label="`${server.line}`" :name="`${server.line}`" lazy)
+            el-tab-pane(v-for="server of area.getServers(linesExclude)" :label="`${server.line}`" :name="`${server.line}`" :key="server.line" lazy)
               div.monster-trace__container
-                div.monster-trace__button-container(v-for="boss in server.getBosses(bossesExclude)")
+                div.monster-trace__button-container(v-for="boss in server.getBosses(bossesExclude)" :key="boss.name")
                   el-button.monster-trace__button.monster-trace__button--name(v-if="bossButtonStates[area.name][server.line][boss.name]" @click="toggle(area, server.line, boss)" :color="boss.color") {{ t(boss.displayName(settings.showNickName)) }}
                   template(v-else)
                     el-popconfirm(:title="`${t('確認復活怪物')}?`" @confirm="toggle(area, server.line, boss)" width="auto")
@@ -1129,10 +1107,10 @@ el-config-provider(:locale="settings.locale")
                         el-button.monster-trace__button.monster-trace__button--name(type="danger") {{ t(boss.displayName(settings.showNickName)) }}
 
           el-tabs.monster-trace-tab(v-else-if="settings.viewMode === 'byBoss'" v-model="timetableTabs.bossActiveTab" @tab-change="onChangeBossTab" type="border-card")
-            el-tab-pane(v-for="_boss of area.servers[0].getBosses(bossesExclude)" :label="t(_boss.displayName(settings.showNickName))" :name="_boss.name" lazy)
+            el-tab-pane(v-for="_boss of area.servers[0].getBosses(bossesExclude)" :label="t(_boss.displayName(settings.showNickName))" :name="_boss.name" :key="_boss.name" lazy)
               div.monster-trace__container
-                div.monster-trace__button-container(v-for="line in Enumerable.from(area.getServers(linesExclude)).select((s) => s.line)")
-                  template(v-for="boss of [area.findBoss(line, _boss.name)]")
+                div.monster-trace__button-container(v-for="line in Enumerable.from(area.getServers(linesExclude)).select((s) => s.line)" :key="line")
+                  template(v-for="boss of [area.findBoss(line, _boss.name)]" :key="boss.name")
                     el-button.monster-trace__button(v-if="bossButtonStates[area.name][line][boss.name]" @click="toggle(area, line, boss)" :color="boss.color") {{ line }}
                     template(v-else)
                       el-popconfirm(:title="`${t('確認復活怪物')}?`" @confirm="toggle(area, line, boss)" width="auto")
@@ -1144,7 +1122,7 @@ el-config-provider(:locale="settings.locale")
         el-card
           template(#header)
             span.boss-info__header {{ t("線路建議 (當前怪物)") }}
-          el-row(v-for="info of nextLineSuggestServerByBoss[timetableTabs.bossActiveTab]")
+          el-row(v-for="(info, i) of nextLineSuggestServerByBoss[timetableTabs.bossActiveTab]" :key="i")
             el-col(v-if="settings.language.startsWith('en')")
               span {{ t("線") }}
               span.next-server-suggest__line-text {{ info.server.line }}
@@ -1157,7 +1135,7 @@ el-config-provider(:locale="settings.locale")
         el-card
           template(#header)
             span.boss-info__header {{ t("線路建議") }}
-          el-row(v-for="info of nextLineSuggestServer")
+          el-row(v-for="(info, i) of nextLineSuggestServer" :key="i")
             el-col(v-if="settings.language.startsWith('en')")
               span {{ t("線") }}
               span.next-server-suggest__line-text {{ info.server.line }}
@@ -1170,7 +1148,7 @@ el-config-provider(:locale="settings.locale")
         el-card.recent-boss-kill
           template(#header)
             span.boss-info__header {{ t("最近死亡怪物") }}
-          el-row(v-for="info of recentBossKills")
+          el-row(v-for="(info, i) of recentBossKills" :key="i")
             el-col(v-if="settings.language.startsWith('en')")
               span {{ t("線") }}
               span.next-server-suggest__line-text {{ info.server.line }}

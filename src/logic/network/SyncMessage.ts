@@ -1,16 +1,15 @@
 import { Expose, instanceToPlain, Type } from "class-transformer";
 import {
-  IsDefined,
   ArrayMaxSize,
+  IsDefined,
   IsInt,
   IsString,
   MaxLength,
   Min,
 } from "class-validator";
 
-import Message from "./Message";
-
 import Area from "../Area";
+import Message from "./Message";
 
 export default class SyncMessage extends Message {
   static cmd = "tofmt/sync";

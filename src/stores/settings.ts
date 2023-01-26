@@ -1,13 +1,16 @@
-import { computed, reactive, ref } from "vue";
-import { defineStore } from "pinia";
+import "dayjs/locale/en";
+import "dayjs/locale/ja";
+import "dayjs/locale/zh-cn";
+import "dayjs/locale/zh-tw";
+
 import Area from "@/logic/Area";
 import { useDark } from "@vueuse/core";
-// import { zhTw, zhCn, en, ja } from "element-plus/lib/locale";
-import zhTw from "element-plus/dist/locale/zh-tw.mjs";
-import zhCn from "element-plus/dist/locale/zh-cn.mjs";
-import en from "element-plus/dist/locale/en.mjs";
-import ja from "element-plus/dist/locale/ja.mjs";
-// new locale please also add dayjs locale in App.vue
+import en from "element-plus/lib/locale/lang/en";
+import ja from "element-plus/lib/locale/lang/ja";
+import zhCn from "element-plus/lib/locale/lang/zh-cn";
+import zhTw from "element-plus/lib/locale/lang/zh-tw";
+import { defineStore } from "pinia";
+import { computed, reactive, ref } from "vue";
 
 export const supportedLanguages = [
   {

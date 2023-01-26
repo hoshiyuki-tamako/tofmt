@@ -1,7 +1,8 @@
 import { Expose, Transform } from "class-transformer";
-import { MaxLength, IsHexColor, Min, IsInt, IsString } from "class-validator";
+import { IsHexColor, IsInt, IsString, MaxLength, Min } from "class-validator";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
+
 dayjs.extend(duration);
 
 export default class BossEntity {

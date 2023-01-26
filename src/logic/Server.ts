@@ -1,7 +1,8 @@
-import Enumerable from "linq";
-import LRU from "lru-cache";
 import { Expose, Type } from "class-transformer";
 import { ArrayMaxSize, IsInt, Max, Min } from "class-validator";
+import Enumerable from "linq";
+import LRU from "lru-cache";
+
 import BossEntity from "./BossEntity";
 
 export default class Server {

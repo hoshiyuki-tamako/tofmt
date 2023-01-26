@@ -1,5 +1,5 @@
-import TOFMTError from "./TofMTError";
+import TOFError from "./TOFError";
 
-export default class MessageError extends TOFMTError {
+export default class MessageError extends TOFError {
   //
 }
