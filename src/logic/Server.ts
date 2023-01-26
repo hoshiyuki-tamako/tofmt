@@ -8,15 +8,13 @@ import BossEntity from "./BossEntity";
 export default class Server {
   @Expose()
   @IsInt()
-  @Min(0, { message: "Line cannot be negative" })
-  @Max(255, { message: "Line cannot larger than 255" })
+  @Min(0)
+  @Max(255)
   line = 0;
 
   @Expose()
   @Type(() => BossEntity)
-  @ArrayMaxSize(255, {
-    message: "Server bosses array size cannot larger than 255",
-  })
+  @ArrayMaxSize(255)
   bosses = [] as BossEntity[];
 
   #bossLookup?: Record<string, BossEntity>;

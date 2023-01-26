@@ -1,5 +1,5 @@
 import { Expose, Transform } from "class-transformer";
-import { IsHexColor, IsInt, IsString, MaxLength, Min } from "class-validator";
+import { IsDefined, IsHexColor, IsString, MaxLength } from "class-validator";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 
@@ -11,19 +11,18 @@ export default class BossEntity {
   // data
   @Expose()
   @IsString()
-  @MaxLength(255, { message: "Boss name too long" })
+  @MaxLength(255)
   name = "";
 
   @Expose()
   @IsString()
-  @MaxLength(255, { message: "Nickname too long" })
+  @MaxLength(255)
   nickName = "";
 
   @Expose()
-  @Transform(({ value }) => dayjs.unix(value), { toClassOnly: true })
-  @Transform(({ value }) => value.unix(), { toPlainOnly: true })
-  @IsInt()
-  @Min(0)
+  @Transform(({ value }) => dayjs(value), { toClassOnly: true })
+  @Transform(({ value }) => +value, { toPlainOnly: true })
+  @IsDefined()
   killAt = dayjs.unix(0);
 
   @Expose()
@@ -31,13 +30,12 @@ export default class BossEntity {
     toClassOnly: true,
   })
   @Transform(({ value }) => value.asMilliseconds(), { toPlainOnly: true })
-  @IsInt()
-  @Min(0)
+  @IsDefined()
   respawnTime = BossEntity.defaultRespawnTime;
 
   // ui
   @Expose()
-  @IsHexColor({ message: "color incorrect value" })
+  @IsHexColor()
   color = "";
 
   constructor(
@@ -46,10 +44,10 @@ export default class BossEntity {
     color = "",
     respawnTime = BossEntity.defaultRespawnTime
   ) {
-    this.name = name;
+    this.name = name || "";
     this.nickName = nickName || name;
-    this.color = color;
-    this.respawnTime = respawnTime;
+    this.color = color || "";
+    this.respawnTime = respawnTime || BossEntity.defaultRespawnTime;
   }
 
   isAlive(now = dayjs()) {

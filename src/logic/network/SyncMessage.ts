@@ -1,4 +1,4 @@
-import { Expose, instanceToPlain, Type } from "class-transformer";
+import { Expose, Type } from "class-transformer";
 import {
   ArrayMaxSize,
   IsDefined,
@@ -14,8 +14,24 @@ import Message from "./Message";
 export default class SyncMessage extends Message {
   static cmd = "tofmt/sync";
 
+  static fromPlain(plain: Record<string, unknown>) {
+    return super._fromPlain(SyncMessage, plain);
+  }
+
+  static fromMessagePack(buffer: Uint8Array) {
+    return super._fromMessagePack(SyncMessage, buffer);
+  }
+
+  static fromMessagePackZstd(buffer: Uint8Array) {
+    return super._fromMessagePackZstd(SyncMessage, buffer);
+  }
+
+  static fromMessagePackZstdBase64(base64: string) {
+    return super._fromMessagePackZstdBase64(SyncMessage, base64);
+  }
+
   static create(
-    areas: Area[],
+    areas = [] as Area[],
     bossesExclude = [] as string[],
     linesExclude = [] as number[]
   ) {
@@ -23,7 +39,7 @@ export default class SyncMessage extends Message {
     message.payload.areas = areas;
     message.payload.bossesExclude = bossesExclude;
     message.payload.linesExclude = linesExclude;
-    return instanceToPlain(message);
+    return message;
   }
 
   cmd = SyncMessage.cmd;
@@ -37,7 +53,7 @@ export default class SyncMessage extends Message {
 export class MTPayload {
   @Expose()
   @Type(() => Area)
-  @ArrayMaxSize(10)
+  @ArrayMaxSize(Object.keys(Area.defaultAreas).length)
   areas = [] as Area[];
 
   @Expose()
@@ -47,7 +63,7 @@ export class MTPayload {
   bossesExclude = [] as string[];
 
   @Expose()
-  @ArrayMaxSize(255)
+  @ArrayMaxSize(Area.limits.line)
   @IsInt({ each: true })
   @Min(0, { each: true })
   linesExclude = [] as number[];

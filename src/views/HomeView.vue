@@ -2,7 +2,6 @@
 import { computed, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox, ElNotification } from "element-plus";
 import { useSettings, viewModes, supportedLanguages } from "@/stores/settings";
-import { transformAndValidateSync } from "class-transformer-validator";
 import {
   Setting,
   Share,
@@ -11,11 +10,7 @@ import {
   DocumentAdd,
   Reading,
 } from "@element-plus/icons-vue";
-import { Packr } from "msgpackr";
 import { useI18n } from "vue-i18n";
-// @ts-expect-error TS2307
-import { Zstd } from "@hpcc-js/wasm/zstd";
-
 import Enumerable from "linq";
 import Peer from "peerjs";
 import dayjs from "dayjs";
@@ -38,13 +33,6 @@ if (urlLocale && supportedLanguages.find(({ value }) => value === urlLocale)) {
   settings.language = urlLocale;
 }
 
-// others
-const md = new MobileDetect(window.navigator.userAgent);
-const packr = new Packr();
-function isMobileDevice() {
-  return !!(md.mobile() || md.tablet());
-}
-
 // servers
 type ConnectedPeerInfo = {
   connectionState: ConnectionState;
@@ -57,6 +45,7 @@ enum ConnectionState {
   connected,
 }
 
+// peer
 const connectionPrefix = "tofmt";
 let peer: Peer | null;
 let connections = [] as DataConnection[];
@@ -66,18 +55,18 @@ const serverState = reactive({
   connectedPeers: {} as Record<string, ConnectedPeerInfo>,
 });
 
-// client
-let serverConnection: DataConnection | null;
-const clientState = reactive({
-  connectionState: ConnectionState.disconnected,
-});
-
-// peer
 function getPeerId(id: string) {
   return `${connectionPrefix}-${id}`;
 }
 const hasConnection = computed(() => {
   return !!(serverState.connectionState || clientState.connectionState);
+});
+
+// client
+let serverConnection: DataConnection | null;
+const clientState = reactive({
+  connectionState: ConnectionState.disconnected,
+  latestSyncMessageCreatedAt: dayjs.unix(0),
 });
 
 // server functions
@@ -120,7 +109,7 @@ function onClickHostTable() {
       if (settings.showUserConnectNotification) {
         ElMessage(t("user_connect", { id: conn.peer }));
       }
-      sendMonsterTable();
+      return sendMonsterTable();
     });
     conn.on("close", () => {
       connections = Enumerable.from(connections)
@@ -179,7 +168,7 @@ function onClickFollowTable() {
       ElMessage.success(t("已跟蹤"));
     });
     serverConnection?.on("data", (data) => {
-      receiveMonsterTable(data as Partial<SyncMessage>);
+      return receiveMonsterTable(data as ArrayBuffer);
     });
     serverConnection?.on("close", () => {
       if (clientState.connectionState) {
@@ -199,8 +188,9 @@ function followTableCleanUp() {
   serverConnection?.close();
   peer?.disconnect();
   peer = null;
-  clientState.connectionState = ConnectionState.disconnected;
   serverConnection = null;
+  clientState.connectionState = ConnectionState.disconnected;
+  clientState.latestSyncMessageCreatedAt = dayjs.unix(0);
 
   // restore setting
   bossesExclude.value = settings.bossesExclude;
@@ -234,6 +224,14 @@ async function onClickAskStopFollowing() {
   }
 }
 
+function createSyncMessage() {
+  return SyncMessage.create(
+    areas,
+    settings.bossesExclude,
+    settings.linesExclude
+  );
+}
+
 function send<T>(message: T) {
   for (const conn of connections) {
     if (
@@ -245,16 +243,25 @@ function send<T>(message: T) {
   }
 }
 
-function sendMonsterTable() {
-  send(SyncMessage.create(areas, bossesExclude.value, linesExclude.value));
+async function sendMonsterTable() {
+  send(await createSyncMessage().toMessagePackZstd());
 }
 
-function receiveMonsterTable(rawData: Partial<SyncMessage>) {
+async function receiveMonsterTable(rawData: ArrayBuffer) {
   try {
-    const data = transformAndValidateSync(SyncMessage, rawData);
+    if (!(rawData instanceof ArrayBuffer)) {
+      throw new MessageError(
+        `receiveMonsterTable rawData type incorrect ${typeof rawData}`
+      );
+    }
+    const data = await SyncMessage.fromMessagePackZstd(new Uint8Array(rawData));
     if (data.cmd !== SyncMessage.cmd) {
       throw new MessageError(`unknown command ${data.cmd}`);
     }
+    if (clientState.latestSyncMessageCreatedAt > data.createdAt) {
+      return;
+    }
+    clientState.latestSyncMessageCreatedAt = data.createdAt;
     areas = data.payload.areas;
     bossesExclude.value = data.payload.bossesExclude;
     linesExclude.value = data.payload.linesExclude;
@@ -267,7 +274,7 @@ function receiveMonsterTable(rawData: Partial<SyncMessage>) {
   }
 }
 
-// binding
+// bindings
 const timetableTabs = reactive({
   areaActiveTab: Object.keys(
     Area.defaultAreas
@@ -284,16 +291,23 @@ const dialogs = reactive({
 });
 
 const forceUpdateTimetable = ref(false);
+const forceUpdateSettingSelectExcludeMenu = ref(false);
 
+const md = new MobileDetect(window.navigator.userAgent);
+function isMobileDevice() {
+  return !!(md.mobile() || md.tablet());
+}
 const isMobileSize = ref(window.matchMedia("(max-width: 650px)").matches);
-window.addEventListener(
-  "resize",
-  () => (isMobileSize.value = window.matchMedia("(max-width: 650px)").matches)
-);
+window.addEventListener("resize", () => {
+  isMobileSize.value = window.matchMedia("(max-width: 650px)").matches;
+  forceUpdateSettingSelectExcludeMenu.value =
+    !forceUpdateSettingSelectExcludeMenu.value;
+});
 
 const bossesExclude = ref(settings.bossesExclude);
 const linesExclude = ref(settings.linesExclude);
 
+// areas
 type BossInfo = {
   server: Server;
   boss: BossEntity;
@@ -356,11 +370,11 @@ async function toggle(area: Area, line: number, boss: BossEntity) {
   }
 
   updateBossInfo();
-  sendMonsterTable();
 
-  if (settings.autosave) {
-    await save();
-  }
+  await Promise.all([
+    sendMonsterTable(),
+    settings.autosave ? save() : undefined,
+  ]);
 }
 
 function updateBossInfo() {
@@ -392,7 +406,7 @@ function updateNextLineSuggestServers(mapName: string, bossName = "") {
   }
 
   const suggest = Enumerable.from(info)
-    .orderBy((o) => o.boss.killAt.unix())
+    .orderBy((o) => +o.boss.killAt)
     .take(settings.bossInfoCount)
     .toArray();
 
@@ -409,7 +423,7 @@ function updateRecentBossKills() {
   for (const area of areas) {
     for (const server of area.getServers(linesExclude.value)) {
       for (const boss of server.getBosses(bossesExclude.value)) {
-        if (!boss.killAt.unix()) {
+        if (!+boss.killAt) {
           continue;
         }
 
@@ -422,7 +436,7 @@ function updateRecentBossKills() {
   }
 
   recentBossKills.value = Enumerable.from(info)
-    .orderByDescending((o) => o.boss.killAt.unix())
+    .orderByDescending((o) => +o.boss.killAt)
     .take(settings.bossInfoCount)
     .toArray();
 }
@@ -478,7 +492,7 @@ function* areasAsTable() {
           area,
           server,
           boss,
-          killAt: boss.killAt.unix() ? boss.killAt.toDate() : null,
+          killAt: +boss.killAt ? boss.killAt.toDate() : null,
         };
       }
     }
@@ -505,7 +519,7 @@ function areasAsTableWithFilter() {
       case "boss":
         return data.orderBy((row) => row.boss.name);
       default:
-        return data.orderBy((row) => row.boss.killAt.unix());
+        return data.orderBy((row) => +row.boss.killAt);
     }
   })().thenByDescending((row) => row.server.line);
 
@@ -521,10 +535,10 @@ function areasAsTableWithLimit() {
     .toArray();
 }
 
-function areaTableOnDateChange(boss: BossEntity, date?: Date) {
+async function areaTableOnDateChange(boss: BossEntity, date?: Date) {
   boss.killAt = date ? dayjs(date) : dayjs.unix(0);
   onChangeBossTab();
-  sendMonsterTable();
+  await sendMonsterTable();
 }
 
 function areaTableOnSortChange({
@@ -596,7 +610,7 @@ async function save(showNotification = false) {
     if (showNotification) {
       ElMessage(t("正在儲存"));
     }
-    settings.save.areas = await exportAreas();
+    settings.save.areas = await createSyncMessage().toMessagePackZstdBase64();
     if (showNotification) {
       ElMessage.success(t("成功儲存"));
     }
@@ -642,13 +656,14 @@ async function onClickLoad() {
   try {
     areas = await importAreas(settings.save.areas);
     onChangeBossTab();
-    sendMonsterTable();
     forceUpdateTimetable.value = !forceUpdateTimetable.value;
     ElMessage.success(t("成功讀取"));
   } catch (e) {
     console.error(e);
     ElNotification.error(t("格式錯誤"));
   }
+
+  await sendMonsterTable();
 }
 
 async function onClickResetMerge() {
@@ -657,7 +672,9 @@ async function onClickResetMerge() {
       type: "warning",
     });
 
-    const oldAreas = await importAreas(await exportAreas());
+    const {
+      payload: { areas: oldAreas },
+    } = SyncMessage.fromPlain(createSyncMessage().toPlain());
     resetAreas();
 
     for (const area of areas) {
@@ -672,12 +689,13 @@ async function onClickResetMerge() {
     }
 
     onChangeBossTab();
-    sendMonsterTable();
     forceUpdateTimetable.value = !forceUpdateTimetable.value;
     ElMessage.success(t("成功"));
   } catch (e) {
     console.info(e);
   }
+
+  await sendMonsterTable();
 }
 
 async function onClickReset() {
@@ -688,12 +706,13 @@ async function onClickReset() {
 
     resetAreas();
     onChangeBossTab();
-    sendMonsterTable();
     forceUpdateTimetable.value = !forceUpdateTimetable.value;
     ElMessage.success(t("成功重置"));
   } catch (e) {
     console.info(e);
   }
+
+  await sendMonsterTable();
 }
 
 async function onClickResetSettings() {
@@ -733,51 +752,35 @@ function onLinesExcludeVisibleChange(visible: boolean) {
   }
 }
 
-function onChangeBossesExclude() {
+async function onChangeBossesExclude() {
   bossesExclude.value = settings.bossesExclude;
   onChangeAreaTab();
-  sendMonsterTable();
+  await sendMonsterTable();
 }
 
-function onChangeLineExcludeChange() {
+async function onChangeLineExcludeChange() {
   linesExclude.value = settings.linesExclude;
   onChangeAreaTab();
-  sendMonsterTable();
+  await sendMonsterTable();
 }
 
-function onChangeMonsterRespawnTime() {
+async function onChangeMonsterRespawnTime() {
   for (const area of areas) {
     area.setGlobalBossRespawnTime(settings.monsterRespawnTime);
   }
   onChangeBossTab();
-  sendMonsterTable();
+  await sendMonsterTable();
 }
 
-async function importAreas(base64Data: string) {
-  const zstd = await Zstd.load();
-
-  const decompressed = zstd.decompress(
-    new Uint8Array(
-      atob(base64Data)
-        .split("")
-        .map((c) => c.charCodeAt(0))
-    )
-  );
-  const rawData = packr.unpack(decompressed) as Partial<SyncMessage>;
-  const data = transformAndValidateSync(SyncMessage, rawData);
-  return data.payload.areas;
+async function importAreas(base64: string) {
+  const {
+    payload: { areas },
+  } = await SyncMessage.fromMessagePackZstdBase64(base64);
+  return areas;
 }
 
-async function exportAreas(): Promise<string> {
-  const zstd = await Zstd.load();
-
-  const pack = packr.pack(SyncMessage.create(areas));
-  const compressed = zstd.compress(pack);
-  return btoa(String.fromCharCode.apply(null, compressed));
-}
-
-const importing = ref(false);
-const exporting = ref(false);
+const importLoading = ref(false);
+const exportLoading = ref(false);
 
 async function onClickImport() {
   if (!settings.importExportText) {
@@ -790,31 +793,33 @@ async function onClickImport() {
   }
 
   try {
-    importing.value = true;
+    importLoading.value = true;
     ElMessage(t("導入中"));
     areas = await importAreas(settings.importExportText);
     onChangeBossTab();
-    sendMonsterTable();
     forceUpdateTimetable.value = !forceUpdateTimetable.value;
     ElMessage.success(t("成功導入"));
   } catch (e) {
     console.error(e);
     ElNotification.error(t("格式錯誤"));
   } finally {
-    importing.value = false;
+    importLoading.value = false;
   }
+
+  await sendMonsterTable();
 }
 
 async function onClickExport() {
   try {
-    exporting.value = true;
+    exportLoading.value = true;
     ElMessage(t("導出中"));
-    settings.importExportText = await exportAreas();
+    settings.importExportText =
+      await createSyncMessage().toMessagePackZstdBase64();
     ElMessage.success(t("成功導出"));
   } catch (e) {
     console.error(e);
   } finally {
-    exporting.value = false;
+    exportLoading.value = false;
   }
 }
 
@@ -838,6 +843,11 @@ function onLanguageChange() {
   document.title = t("幻塔怪物時間表");
 }
 
+function onOpenSetting() {
+  forceUpdateSettingSelectExcludeMenu.value =
+    !forceUpdateSettingSelectExcludeMenu.value;
+}
+
 onLanguageChange();
 onChangeAreaTab();
 </script>
@@ -845,7 +855,7 @@ onChangeAreaTab();
 <template lang="pug">
 el-config-provider(:locale="settings.locale")
   el-main
-    el-dialog(v-model="dialogs.settingDialogVisible" width="80%" :fullscreen="isMobileSize")
+    el-dialog(v-model="dialogs.settingDialogVisible" width="80%" :fullscreen="isMobileSize" @open="onOpenSetting")
       el-tabs
         el-tab-pane(:label="t('界面')" lazy)
           table.setting-table
@@ -868,7 +878,7 @@ el-config-provider(:locale="settings.locale")
               td
                 el-switch(v-model="settings.showNickName")
           el-divider
-          table
+          table.setting-table
             tr
               td {{ t("用戶連接通知") }}
               td
@@ -882,13 +892,13 @@ el-config-provider(:locale="settings.locale")
               td
                 el-switch(v-model="settings.showMonsterRespawnNotification")
           el-divider
-          table
+          table.setting-table
             tr
               td {{ t("查找表格每頁數量") }}
               td
                 el-input-number(v-model="settings.areaTable.pageSize" :min="1" :max="10" :step="1" step-strictly)
           el-divider
-          table
+          table.setting-table
             tr
               td {{ t("顯示線路建議當前怪物") }}
               td
@@ -911,18 +921,16 @@ el-config-provider(:locale="settings.locale")
               td {{ t("自動儲存 (離線/分享生效)") }}
               td
                 el-switch(v-model="settings.autosave")
-          el-row
-            el-col
-              el-input(v-model="settings.id" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
-                template(#prepend) ID
-              el-button(@click="settings.resetId" :disabled="hasConnection") {{ t("隨機 ID") }}
-          el-row
-            el-col
-              el-input(v-model="settings.targetId" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+" style="width: 80%")
-                template(#prepend) {{ t("目標 ID") }}
+          div(style="display: flex")
+            el-input(v-model="settings.id" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
+              template(#prepend) ID
+            el-button(@click="settings.resetId" :disabled="hasConnection") {{ t("隨機 ID") }}
+          div(style="display: flex")
+            el-input(v-model="settings.targetId" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
+              template(#prepend) {{ t("目標 ID") }}
 
-        el-tab-pane(:label="t('時間表')" lazy)
-          table(style="width: 100%")
+        el-tab-pane(:label="t('時間表')" :key="forceUpdateSettingSelectExcludeMenu" name="bossInfo" lazy)
+          table.setting-table.setting-timetable-table
             tr
               td {{ t("復活時間") }}
               td
@@ -938,17 +946,17 @@ el-config-provider(:locale="settings.locale")
             tr
               td {{ t("隱藏線路") }}
               td
-                el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" filterable multiple  style="width: 100%")
+                el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" filterable multiple style="width: 100%")
                   el-option(v-for="line of Enumerable.range(1, areas[0].getLargestServerLine())" :key="line" :label="`${line}`" :value="line" )
           el-divider
           small *{{ t("更改線路上限需要手動重置時間表") }}
           br
           br
-          table
+          table.setting-table
             tr(v-for="name of Object.keys(Area.defaultAreas)" :key="name")
               td {{ t(name) }}
               td
-                el-input-number(v-model="settings.maxServerLine[name]" :min="1" :max="255" :step="1" step-strictly)
+                el-input-number(v-model="settings.maxServerLine[name]" :min="1" :max="Area.limits.line" :step="1" step-strictly)
                 span  {{ t("線") }}
           el-divider
           el-button(@click="onClickResetMerge" type="warning") {{ t("以目前時間重置時間表") }}
@@ -957,7 +965,7 @@ el-config-provider(:locale="settings.locale")
           div.setting-row
             el-button(@click="onClickImport") {{ t("導入") }}
             el-button(@click="onClickExport") {{ t("導出") }}
-          div.setting-row(v-loading="importing || exporting")
+          div.setting-row(v-loading="importLoading || exportLoading")
             el-input(v-model="settings.importExportText" :rows="16" type="textarea")
 
         el-tab-pane(:label="t('重置')" lazy)
@@ -1047,7 +1055,7 @@ el-config-provider(:locale="settings.locale")
         el-table-column(prop="boss" :label="t('怪物名字')" sortable)
           template(#default="scope") {{ t(scope.row.boss.displayName(settings.showNickName)) }}
         el-table-column(:label="t('擊殺時間')" sortable)
-          template(#default="scope") {{ scope.row.boss.killAt.unix() ? scope.row.boss.killAt.format('HH:mm:ss') : '-' }}
+          template(#default="scope") {{ +scope.row.boss.killAt ? scope.row.boss.killAt.format('HH:mm:ss') : '-' }}
         el-table-column(:label="t('修改時間')")
           template(#default="scope")
             el-date-picker(type="datetime" v-model="scope.row.killAt" @change="areaTableOnDateChange(scope.row.boss, $event)" :disabled="!!clientState.connectionState")
@@ -1162,8 +1170,18 @@ el-config-provider(:locale="settings.locale")
 .setting-row
   margin-bottom: 12px
 
-.setting-table td:nth-child(even)
-  padding-left: 12px
+.setting-table
+  td:nth-child(odd)
+    white-space: nowrap
+  td:nth-child(even)
+    padding-left: 6px
+
+.setting-timetable-table
+  width: 100%
+  td:nth-child(odd)
+    width: 0
+  td:nth-child(even)
+    display: flex
 
 .action-menu
   display: flex
@@ -1213,12 +1231,20 @@ el-config-provider(:locale="settings.locale")
 
 .monster-trace__container
   display: grid
-  width: 600px
-  grid-template-columns: repeat(10, 1fr)
+  width: 1200px
+  grid-template-columns: repeat(20, 1fr)
   col-gap: 12px
   row-gap: 12px
 
-@media (max-width: 650px)
+@media (max-width: 1260px)
+  .monster-trace__container
+    display: grid
+    width: 600px
+    grid-template-columns: repeat(10, 1fr)
+    col-gap: 12px
+    row-gap: 12px
+
+@media (max-width: 670px)
   .monster-trace__container
     width: 100%
     display: flex

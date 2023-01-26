@@ -55,6 +55,10 @@ export default class Area {
     },
   };
 
+  static limits = {
+    line: 255,
+  };
+
   static generateAreas(
     maxServerLineOverride?: Record<string, number>,
     respawnTime?: number
@@ -94,14 +98,12 @@ export default class Area {
 
   @Expose()
   @IsString()
-  @MaxLength(255, { message: "Area name too long" })
+  @MaxLength(255)
   name = "";
 
   @Expose()
   @Type(() => Server)
-  @ArrayMaxSize(255, {
-    message: "Area server array size cannot larger than 255",
-  })
+  @ArrayMaxSize(Area.limits.line)
   servers = [] as Server[];
 
   #largestServerLine?: number;
