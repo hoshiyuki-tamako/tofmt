@@ -861,14 +861,6 @@ function onOpenSetting() {
 
 onLanguageChange();
 onChangeAreaTab();
-
-for (const area of areas) {
-  for (const server of area.servers) {
-    for (const boss of server.bosses) {
-      boss.killAt = dayjs(Math.random() * 10000000);
-    }
-  }
-}
 </script>
 
 <template lang="pug">
