@@ -10,6 +10,10 @@ import {
 } from "class-transformer-validator";
 
 export default abstract class Message {
+  static defaultOptions = {
+    compressionLevel: 22,
+  };
+
   static packr = new Packr();
 
   protected static _fromPlain<T extends object>(
@@ -72,9 +76,11 @@ export default abstract class Message {
     return Message.packr.encode(this.toPlain());
   }
 
-  async toMessagePackZstd() {
+  async toMessagePackZstd(
+    compressionLevel = Message.defaultOptions.compressionLevel
+  ) {
     const zstd = await Zstd.load();
-    return zstd.compress(this.toMessagePack()) as Uint8Array;
+    return zstd.compress(this.toMessagePack(), compressionLevel) as Uint8Array;
   }
 
   async toMessagePackZstdBase64() {
