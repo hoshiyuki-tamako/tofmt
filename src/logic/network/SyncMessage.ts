@@ -15,19 +15,19 @@ export default class SyncMessage extends Message {
   static cmd = "tofmt/sync";
 
   static fromPlain(plain: Record<string, unknown>) {
-    return super._fromPlain(SyncMessage, plain);
+    return super._fromPlain(this, plain);
   }
 
   static fromMessagePack(buffer: Uint8Array) {
-    return super._fromMessagePack(SyncMessage, buffer);
+    return super._fromMessagePack(this, buffer);
   }
 
   static fromMessagePackZstd(buffer: Uint8Array) {
-    return super._fromMessagePackZstd(SyncMessage, buffer);
+    return super._fromMessagePackZstd(this, buffer);
   }
 
   static fromMessagePackZstdBase64(base64: string) {
-    return super._fromMessagePackZstdBase64(SyncMessage, base64);
+    return super._fromMessagePackZstdBase64(this, base64);
   }
 
   static create(
