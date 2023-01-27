@@ -72,6 +72,7 @@ const clientState = reactive({
 // server functions
 function onServerError(e: Error) {
   ElNotification.error(e.message);
+  console.error(e);
 }
 
 function onClickHostTable() {
@@ -125,7 +126,10 @@ function onClickHostTable() {
   peer.on("disconnected", () => {
     hostServerCleanUp();
   });
-  peer.on("error", onServerError);
+  peer.on("error", (e) => {
+    onServerError(e);
+    onClickCloseHosting();
+  });
 }
 
 function hostServerCleanUp() {
@@ -181,7 +185,10 @@ function onClickFollowTable() {
     followTableCleanUp();
     ElMessage(t("已停止跟蹤"));
   });
-  peer.on("error", onServerError);
+  peer.on("error", (e) => {
+    onServerError(e);
+    onClickCloseFollowing();
+  });
 }
 
 function followTableCleanUp() {
@@ -912,6 +919,10 @@ el-config-provider(:locale="settings.locale")
           el-divider
           table.setting-table
             tr
+              td {{ t("顯示時間表") }}
+              td
+                el-switch(v-model="settings.showTimetable")
+            tr
               td {{ t("顯示線路建議當前怪物") }}
               td
                 el-switch(v-model="settings.showBossCurrentTypeSuggestion")
@@ -1123,7 +1134,7 @@ el-config-provider(:locale="settings.locale")
       span.setting_menu__id(v-if="serverState.connectionState") {{ settings.id }}
       span.setting_menu__id(v-if="clientState.connectionState === ConnectionState.connected") {{ settings.targetId }}
     br
-    div
+    div(v-if="settings.showTimetable")
       el-tabs(v-model="timetableTabs.areaActiveTab" @tab-change="onChangeAreaTab" :key="forceUpdateTimetable" type="border-card")
         el-tab-pane(v-for="area of areas" :label="t(area.name)" :name="area.name" :key="area.name" lazy)
 
@@ -1147,7 +1158,7 @@ el-config-provider(:locale="settings.locale")
                       el-popconfirm(:title="`${t('確認復活怪物')}?`" @confirm="toggle(area, line, boss)" width="auto")
                         template(#reference)
                           el-button.monster-trace__button(type="danger") {{ line }}
-    br
+      br
     div.boss-info-container
       div(v-if="settings.viewMode === 'byBoss' && settings.showBossCurrentTypeSuggestion")
         el-card
