@@ -70,6 +70,7 @@ export const useSettings = defineStore(
     const showNickName = ref(false);
     const viewMode = ref("byBoss");
     const autosave = ref(false);
+    const loadSavedExcludes = ref(true);
 
     // notification
     const showUserConnectNotification = ref(true);
@@ -126,6 +127,7 @@ export const useSettings = defineStore(
       showNickName.value = false;
       viewMode.value = "byBoss";
       autosave.value = false;
+      loadSavedExcludes.value = true;
 
       showUserConnectNotification.value = true;
       showUserDisconnectNotification.value = false;
@@ -170,6 +172,7 @@ export const useSettings = defineStore(
       showNickName,
       viewMode,
       autosave,
+      loadSavedExcludes,
 
       showUserConnectNotification,
       showUserDisconnectNotification,

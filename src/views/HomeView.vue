@@ -224,11 +224,11 @@ async function onClickAskStopFollowing() {
   }
 }
 
-function createSyncMessage() {
+function createSyncMessage(includeExcludes = true) {
   return SyncMessage.create(
     areas,
-    settings.bossesExclude,
-    settings.linesExclude
+    includeExcludes ? bossesExclude.value : [],
+    includeExcludes ? linesExclude.value : []
   );
 }
 
@@ -295,9 +295,13 @@ const forceUpdateSettingSelectExcludeMenu = ref(false);
 
 const md = new MobileDetect(window.navigator.userAgent);
 const isMobileDevice = !!(md.mobile() || md.tablet());
-const isMobileSize = ref(window.matchMedia("(max-width: 650px)").matches);
+const isMobileSize = ref(
+  window.matchMedia("screen and (max-width: 650px)").matches
+);
 window.addEventListener("resize", () => {
-  isMobileSize.value = window.matchMedia("(max-width: 650px)").matches;
+  isMobileSize.value = window.matchMedia(
+    "screen and (max-width: 650px)"
+  ).matches;
   forceUpdateSettingSelectExcludeMenu.value =
     !forceUpdateSettingSelectExcludeMenu.value;
 });
@@ -385,23 +389,23 @@ function updateBossInfo() {
 }
 
 function updateNextLineSuggestServers(mapName: string, bossName = "") {
-  const info = [] as BossInfo[];
-  const now = dayjs();
+  const info = (function* () {
+    const now = dayjs();
+    for (const server of areas
+      .find((a) => a.name === mapName)
+      ?.getServers(linesExclude.value) ?? []) {
+      for (const boss of server.getBosses(bossesExclude.value)) {
+        if (!boss.isAlive(now) || (bossName && boss.name !== bossName)) {
+          continue;
+        }
 
-  for (const server of areas
-    .find((a) => a.name === mapName)
-    ?.getServers(linesExclude.value) ?? []) {
-    for (const boss of server.getBosses(bossesExclude.value)) {
-      if (!boss.isAlive(now) || (bossName && boss.name !== bossName)) {
-        continue;
+        yield {
+          server,
+          boss,
+        };
       }
-
-      info.push({
-        server,
-        boss,
-      });
     }
-  }
+  })();
 
   const suggest = Enumerable.from(info)
     .orderBy((o) => +o.boss.killAt)
@@ -416,22 +420,22 @@ function updateNextLineSuggestServers(mapName: string, bossName = "") {
 }
 
 function updateRecentBossKills() {
-  const info = [] as BossInfo[];
+  const info = (function* () {
+    for (const area of areas) {
+      for (const server of area.getServers(linesExclude.value)) {
+        for (const boss of server.getBosses(bossesExclude.value)) {
+          if (!+boss.killAt) {
+            continue;
+          }
 
-  for (const area of areas) {
-    for (const server of area.getServers(linesExclude.value)) {
-      for (const boss of server.getBosses(bossesExclude.value)) {
-        if (!+boss.killAt) {
-          continue;
+          yield {
+            server,
+            boss,
+          };
         }
-
-        info.push({
-          server,
-          boss,
-        });
       }
     }
-  }
+  })();
 
   recentBossKills.value = Enumerable.from(info)
     .orderByDescending((o) => +o.boss.killAt)
@@ -605,9 +609,6 @@ function resetButtonTimeout() {
 
 async function save(showNotification = false) {
   try {
-    if (showNotification) {
-      ElMessage(t("正在儲存"));
-    }
     settings.save.areas = await createSyncMessage().toMessagePackZstdBase64();
     if (showNotification) {
       ElMessage.success(t("成功儲存"));
@@ -652,9 +653,7 @@ async function onClickLoad() {
   }
 
   try {
-    areas = await importAreas(settings.save.areas);
-    onChangeBossTab();
-    forceUpdateTimetable.value = !forceUpdateTimetable.value;
+    await importAreas(settings.save.areas, false);
     ElMessage.success(t("成功讀取"));
   } catch (e) {
     console.error(e);
@@ -770,11 +769,22 @@ async function onChangeMonsterRespawnTime() {
   await sendMonsterTable();
 }
 
-async function importAreas(base64: string) {
-  const {
-    payload: { areas },
-  } = await SyncMessage.fromMessagePackZstdBase64(base64);
-  return areas;
+async function importAreas(
+  base64: string,
+  loadSavedExcludes = settings.loadSavedExcludes
+) {
+  const syncMessage = await SyncMessage.fromMessagePackZstdBase64(base64);
+  areas = syncMessage.payload.areas;
+  if (loadSavedExcludes) {
+    settings.bossesExclude = syncMessage.payload.bossesExclude;
+    settings.linesExclude = syncMessage.payload.linesExclude;
+    forceUpdateSettingSelectExcludeMenu.value =
+      !forceUpdateSettingSelectExcludeMenu.value;
+    onChangeBossesExclude();
+    onChangeLineExcludeChange();
+  }
+  onChangeBossTab();
+  forceUpdateTimetable.value = !forceUpdateTimetable.value;
 }
 
 const importLoading = ref(false);
@@ -792,10 +802,7 @@ async function onClickImport() {
 
   try {
     importLoading.value = true;
-    ElMessage(t("導入中"));
-    areas = await importAreas(settings.importExportText);
-    onChangeBossTab();
-    forceUpdateTimetable.value = !forceUpdateTimetable.value;
+    await importAreas(settings.importExportText);
     ElMessage.success(t("成功導入"));
   } catch (e) {
     console.error(e);
@@ -810,7 +817,6 @@ async function onClickImport() {
 async function onClickExport() {
   try {
     exportLoading.value = true;
-    ElMessage(t("導出中"));
     settings.importExportText =
       await createSyncMessage().toMessagePackZstdBase64();
     ElMessage.success(t("成功導出"));
@@ -848,6 +854,14 @@ function onOpenSetting() {
 
 onLanguageChange();
 onChangeAreaTab();
+
+for (const area of areas) {
+  for (const server of area.servers) {
+    for (const boss of server.bosses) {
+      boss.killAt = dayjs(Math.random() * 10000000);
+    }
+  }
+}
 </script>
 
 <template lang="pug">
@@ -938,10 +952,10 @@ el-config-provider(:locale="settings.locale")
               td {{ t("隱藏怪物") }}
               td
                 template(v-if="isMobileDevice")
-                  el-select(v-model="settings.bossesExclude" @change="onChangeBossesExclude" filterable multiple style="width: 100%")
+                  el-select(v-model="settings.bossesExclude" @change="onChangeBossesExclude" placeholder="" filterable multiple style="width: 100%")
                     el-option(v-for="name of Area.getAllBossNames()" :key="name" :label="t(name)" :value="name")
                 template(v-else)
-                  el-select(v-model="settings.bossesExclude" @change="onChangeBossesExclude" :key="forceUpdateSettingSelectExcludeMenu" filterable multiple style="width: 100%")
+                  el-select(v-model="settings.bossesExclude" @change="onChangeBossesExclude" :key="forceUpdateSettingSelectExcludeMenu" placeholder="" filterable multiple style="width: 100%")
                       el-option(v-for="name of Area.getAllBossNames()" :key="name" :label="t(name)" :value="name")
                 el-button(@click="onClickHideAllMonster") {{ t("隱藏所有怪物") }}
                 el-button(@click="onClickShowAllMonster" style="margin-left: 0") {{ t("顯示所有怪物") }}
@@ -949,10 +963,10 @@ el-config-provider(:locale="settings.locale")
               td {{ t("隱藏線路") }}
               td
                 template(v-if="isMobileDevice")
-                  el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" filterable multiple style="width: 100%")
+                  el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" placeholder="" filterable multiple style="width: 100%")
                     el-option(v-for="line of Enumerable.range(1, areas[0].getLargestServerLine())" :key="line" :label="`${line}`" :value="line" )
                 template(v-else)
-                  el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" :key="forceUpdateSettingSelectExcludeMenu" filterable multiple style="width: 100%")
+                  el-select(v-model="settings.linesExclude" @visible-change="onLinesExcludeVisibleChange" @change="onChangeLineExcludeChange" placeholder="" :key="forceUpdateSettingSelectExcludeMenu" filterable multiple style="width: 100%")
                       el-option(v-for="line of Enumerable.range(1, areas[0].getLargestServerLine())" :key="line" :label="`${line}`" :value="line" )
           el-divider
           small *{{ t("更改線路上限需要手動重置時間表") }}
@@ -971,6 +985,9 @@ el-config-provider(:locale="settings.locale")
           div.setting-row
             el-button(@click="onClickImport") {{ t("導入") }}
             el-button(@click="onClickExport") {{ t("導出") }}
+            div(style="float: right")
+              span {{ t("包含隱藏怪物線路設定") }}
+              el-switch(v-model="settings.loadSavedExcludes" style="margin-left: 12px")
           div.setting-row(v-loading="importLoading || exportLoading")
             el-input(v-model="settings.importExportText" :rows="16" type="textarea")
 
@@ -1060,7 +1077,7 @@ el-config-provider(:locale="settings.locale")
           template(#default="scope") {{ scope.row.server.line }}
         el-table-column(prop="boss" :label="t('怪物名字')" sortable)
           template(#default="scope") {{ t(scope.row.boss.displayName(settings.showNickName)) }}
-        el-table-column(:label="t('擊殺時間')" sortable)
+        el-table-column(prop="killAt" :label="t('擊殺時間')" sortable)
           template(#default="scope") {{ +scope.row.boss.killAt ? scope.row.boss.killAt.format('HH:mm:ss') : '-' }}
         el-table-column(:label="t('修改時間')")
           template(#default="scope")
@@ -1181,13 +1198,15 @@ el-config-provider(:locale="settings.locale")
     white-space: nowrap
   td:nth-child(even)
     padding-left: 6px
+    display: flex
+    align-items: center
+  td > span
+    margin-left: 4px
 
 .setting-timetable-table
   width: 100%
   td:nth-child(odd)
     width: 0
-  td:nth-child(even)
-    display: flex
 
 .action-menu
   display: flex
@@ -1210,8 +1229,7 @@ el-config-provider(:locale="settings.locale")
   display: flex
   flex-direction: row
   flex-wrap: wrap
-  column-gap: 12px
-  row-gap: 12px
+  gap: 12px
   justify-content: right
   margin-bottom: 6px
   > div
@@ -1239,30 +1257,18 @@ el-config-provider(:locale="settings.locale")
   display: grid
   width: 1200px
   grid-template-columns: repeat(20, 1fr)
-  col-gap: 12px
-  row-gap: 12px
-
-@media (max-width: 1260px)
-  .monster-trace__container
-    display: grid
+  gap: 12px
+  @media screen and (max-width: 1260px)
     width: 600px
     grid-template-columns: repeat(10, 1fr)
-    col-gap: 12px
-    row-gap: 12px
-
-@media (max-width: 670px)
-  .monster-trace__container
+  @media screen and (max-width: 670px)
     width: 100%
     display: flex
     flex-wrap: wrap
-    row-gap: 0
-  .monster-trace__button
-    margin: 6px
 
 .monster-trace__button
   width: 50px
   height: 40px
-
 .monster-trace__button--name
   width: auto
   margin-left: 12px
@@ -1279,13 +1285,11 @@ el-config-provider(:locale="settings.locale")
   display: flex
   flex-direction: row
   flex-wrap: wrap
-  column-gap: 24px
-  row-gap: 24px
+  gap: 24px
   align-items: stretch
   .el-card
     min-height: 100%
-@media (max-width: 650px)
-  .boss-info-container
+  @media screen and (max-width: 650px)
     > div
       width: 100%
     .el-card
