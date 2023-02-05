@@ -86,6 +86,7 @@ export const messages = {
     顯示時間表: "顯示時間表",
     顯示線路建議當前怪物: "顯示線路建議當前怪物",
     顯示線路建議: "顯示線路建議",
+    顯示怪物復活時間: "顯示怪物復活時間",
     顯示最近擊殺怪物: "顯示最近擊殺怪物",
     怪物知訊數量: "怪物知訊數量",
     功能: "功能",
@@ -137,6 +138,7 @@ export const messages = {
     確認復活怪物: "確認復活怪物",
     "線路建議 (當前怪物)": "線路建議 (當前怪物)",
     線路建議: "線路建議",
+    怪物復活時間: "怪物復活時間",
     最近死亡怪物: "最近死亡怪物",
   },
   "zh-cn": {
@@ -227,6 +229,7 @@ export const messages = {
     顯示時間表: "显示时间表",
     顯示線路建議當前怪物: "显示线路建议当前怪物",
     顯示線路建議: "显示线路建议",
+    顯示怪物復活時間: "显示怪物复活时间",
     顯示最近擊殺怪物: "显示最近击杀怪物",
     怪物知訊數量: "怪物知讯数量",
     功能: "功能",
@@ -278,6 +281,7 @@ export const messages = {
     確認復活怪物: "确认复活怪物",
     "線路建議 (當前怪物)": "线路建议 (当前怪物)",
     線路建議: "线路建议",
+    怪物復活時間: "怪物复活时间",
     最近死亡怪物: "最近死亡怪物",
   },
   en: {
@@ -368,6 +372,7 @@ export const messages = {
     顯示時間表: "Show timetable",
     顯示線路建議當前怪物: "Show line recommendation by current monster",
     顯示線路建議: "Show line recommendation",
+    顯示怪物復活時間: "Show time until respawn monster",
     顯示最近擊殺怪物: "Show recently killed monsters",
     怪物知訊數量: "Monster info amount",
     功能: "Function",
@@ -420,6 +425,7 @@ export const messages = {
     確認復活怪物: "Respawn monster",
     "線路建議 (當前怪物)": "Line recommendation (current monster)",
     線路建議: "Line recommendation",
+    怪物復活時間: "Monster respawn time",
     最近死亡怪物: "Recently killed monsters",
   },
   ja: {
@@ -510,6 +516,7 @@ export const messages = {
     顯示時間表: "スケジュール表示",
     顯示線路建議當前怪物: "現在のモンスターラインおすすめを表示",
     顯示線路建議: "ラインおすすめを表示",
+    顯示怪物復活時間: "モンスター復活時間を表示",
     顯示最近擊殺怪物: "最近倒したモンスターを表示",
     怪物知訊數量: "モンスター情報数",
     功能: "機能",
@@ -562,6 +569,7 @@ export const messages = {
     確認復活怪物: "モンスターを復活ですか",
     "線路建議 (當前怪物)": "ラインおすすめ (現在のモンスター)",
     線路建議: "ラインおすすめ",
+    怪物復活時間: "モンスターの復活時間",
     最近死亡怪物: "最近倒しだモンスター",
   },
 };

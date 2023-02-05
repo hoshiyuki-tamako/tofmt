@@ -33,6 +33,10 @@ export default class BossEntity {
   @IsDefined()
   respawnTime = BossEntity.defaultRespawnTime;
 
+  get respawnAt() {
+    return this.killAt.add(this.respawnTime);
+  }
+
   // ui
   @Expose()
   @IsHexColor()
@@ -52,6 +56,10 @@ export default class BossEntity {
 
   isAlive(now = dayjs()) {
     return now.diff(this.killAt.add(this.respawnTime)) > 0;
+  }
+
+  isDead(now = dayjs()) {
+    return !this.isAlive(now);
   }
 
   respawn() {

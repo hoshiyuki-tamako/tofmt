@@ -88,6 +88,7 @@ export const useSettings = defineStore(
     // line suggest
     const showBossCurrentTypeSuggestion = ref(true);
     const showBossSuggestion = ref(true);
+    const showBossInfoRecentRespawn = ref(true);
     const showBossInfoRecentKilled = ref(true);
     const bossInfoCount = ref(10);
 
@@ -138,9 +139,13 @@ export const useSettings = defineStore(
 
       areaTable.pageSize = 10;
 
-      bossInfoCount.value = 10;
-
       showTimetable.value = true;
+
+      showBossCurrentTypeSuggestion.value = true;
+      showBossSuggestion.value = true;
+      showBossInfoRecentRespawn.value = true;
+      showBossInfoRecentKilled.value = true;
+      bossInfoCount.value = 10;
 
       resetMaxServerLine();
       monsterRespawnTime.value = 60;
@@ -189,6 +194,7 @@ export const useSettings = defineStore(
 
       showBossCurrentTypeSuggestion,
       showBossSuggestion,
+      showBossInfoRecentRespawn,
       showBossInfoRecentKilled,
       bossInfoCount,
 

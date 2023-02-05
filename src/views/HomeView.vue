@@ -320,11 +320,13 @@ const linesExclude = ref(settings.linesExclude);
 type BossInfo = {
   server: Server;
   boss: BossEntity;
+  isDead: boolean;
 };
 
 const nextLineSuggestServerByBoss = reactive({} as Record<string, BossInfo[]>);
 const nextLineSuggestServer = ref([] as BossInfo[]);
 const recentBossKills = ref([] as BossInfo[]);
+const recentRespawn = ref([] as BossInfo[]);
 
 let areas = [] as Area[];
 resetAreas();
@@ -386,38 +388,67 @@ async function toggle(area: Area, line: number, boss: BossEntity) {
   ]);
 }
 
-function updateBossInfo() {
-  updateNextLineSuggestServers(
-    timetableTabs.areaActiveTab,
-    timetableTabs.bossActiveTab
-  );
-  updateNextLineSuggestServers(timetableTabs.areaActiveTab);
-  updateRecentBossKills();
+function* bossInfoGenerator(now = dayjs()) {
+  for (const area of areas) {
+    for (const server of area.getServers(linesExclude.value)) {
+      for (const boss of server.getBosses(bossesExclude.value)) {
+        yield {
+          server,
+          boss,
+          isDead: boss.isDead(now),
+        };
+      }
+    }
+  }
 }
 
-function updateNextLineSuggestServers(mapName: string, bossName = "") {
+function updateBossInfo() {
+  const now = dayjs();
+  const info = Enumerable.from(bossInfoGenerator(now)).toArray();
+  updateNextLineSuggestServers(
+    timetableTabs.areaActiveTab,
+    timetableTabs.bossActiveTab,
+    now
+  );
+  updateNextLineSuggestServers(timetableTabs.areaActiveTab, "", now);
+  updateBossRecentRespawn(info);
+  updateRecentBossKills(info);
+}
+
+function updateNextLineSuggestServers(
+  mapName: string,
+  bossName = "",
+  now = dayjs()
+) {
   const info = (function* () {
-    const now = dayjs();
     for (const server of areas
       .find((a) => a.name === mapName)
       ?.getServers(linesExclude.value) ?? []) {
       for (const boss of server.getBosses(bossesExclude.value)) {
-        if (!boss.isAlive(now) || (bossName && boss.name !== bossName)) {
-          continue;
-        }
-
         yield {
           server,
           boss,
+          isDead: boss.isDead(now),
         };
       }
     }
   })();
 
-  const suggest = Enumerable.from(info)
+  const allBosses = Enumerable.from(info)
+    .where((o) => !bossName || o.boss.name === bossName)
     .orderBy((o) => +o.boss.killAt)
+    .toArray();
+  const suggest = Enumerable.from(allBosses)
+    .where((o) => !o.isDead)
     .take(settings.bossInfoCount)
     .toArray();
+
+  if (suggest.length < settings.bossInfoCount) {
+    const respawnBoss = Enumerable.from(allBosses)
+      .skip(suggest.length)
+      .take(settings.bossInfoCount - suggest.length);
+    suggest.push(...respawnBoss);
+  }
 
   if (bossName) {
     nextLineSuggestServerByBoss[bossName] = suggest;
@@ -426,25 +457,17 @@ function updateNextLineSuggestServers(mapName: string, bossName = "") {
   }
 }
 
-function updateRecentBossKills() {
-  const info = (function* () {
-    for (const area of areas) {
-      for (const server of area.getServers(linesExclude.value)) {
-        for (const boss of server.getBosses(bossesExclude.value)) {
-          if (!+boss.killAt) {
-            continue;
-          }
+function updateBossRecentRespawn(info: BossInfo[]) {
+  recentRespawn.value = Enumerable.from(info)
+    .where((o) => o.isDead)
+    .orderBy((o) => +o.boss.killAt)
+    .take(settings.bossInfoCount)
+    .toArray();
+}
 
-          yield {
-            server,
-            boss,
-          };
-        }
-      }
-    }
-  })();
-
+function updateRecentBossKills(info: BossInfo[]) {
   recentBossKills.value = Enumerable.from(info)
+    .where((o) => !!+o.boss.killAt)
     .orderByDescending((o) => +o.boss.killAt)
     .take(settings.bossInfoCount)
     .toArray();
@@ -923,6 +946,10 @@ el-config-provider(:locale="settings.locale")
               td
                 el-switch(v-model="settings.showBossSuggestion")
             tr
+              td {{ t("顯示怪物復活時間") }}
+              td
+                el-switch(v-model="settings.showBossInfoRecentRespawn")
+            tr
               td {{ t("顯示最近擊殺怪物") }}
               td
                 el-switch(v-model="settings.showBossInfoRecentKilled")
@@ -1156,40 +1183,60 @@ el-config-provider(:locale="settings.locale")
         el-card
           template(#header)
             span.boss-info__header {{ t("線路建議 (當前怪物)") }}
-          el-row(v-for="(info, i) of nextLineSuggestServerByBoss[timetableTabs.bossActiveTab]" :key="i")
-            el-col(v-if="settings.language.startsWith('en')")
-              span {{ t("線") }}
-              span.next-server-suggest__line-text {{ info.server.line }}
-              span {{ t(info.boss.displayName(settings.showNickName)) }}
-            el-col(v-else)
-              span.next-server-suggest__line-text {{ info.server.line }}
-              span {{ t("線") }}
-              span  / {{ t(info.boss.displayName(settings.showNickName)) }}
+          el-row(v-for="(info, i) of nextLineSuggestServerByBoss[timetableTabs.bossActiveTab]" :key="i" :class="{'boss-info-container__info--dead': info.boss.isDead()}")
+            el-col
+              span(v-if="settings.language.startsWith('en')")
+                span {{ t("線") }}
+                span.next-server-suggest__line-text {{ info.server.line }}
+                span {{ t(info.boss.displayName(settings.showNickName)) }}
+              span(v-else)
+                span.next-server-suggest__line-text {{ info.server.line }}
+                span {{ t("線") }}
+                span  / {{ t(info.boss.displayName(settings.showNickName)) }}
+              span(v-if="info.boss.isDead()")  / {{ info.boss.respawnAt.format('HH:mm:ss') }}
       div(v-if="settings.showBossSuggestion")
         el-card
           template(#header)
             span.boss-info__header {{ t("線路建議") }}
-          el-row(v-for="(info, i) of nextLineSuggestServer" :key="i")
-            el-col(v-if="settings.language.startsWith('en')")
-              span {{ t("線") }}
-              span.next-server-suggest__line-text {{ info.server.line }}
-              span {{ t(info.boss.displayName(settings.showNickName)) }}
-            el-col(v-else)
-              span.next-server-suggest__line-text {{ info.server.line }}
-              span {{ t("線") }}
-              span  / {{ t(info.boss.displayName(settings.showNickName)) }}
+          el-row(v-for="(info, i) of nextLineSuggestServer" :key="i" :class="{'boss-info-container__info--dead': info.boss.isDead()}")
+            el-col
+              span(v-if="settings.language.startsWith('en')")
+                span {{ t("線") }}
+                span.next-server-suggest__line-text {{ info.server.line }}
+                span {{ t(info.boss.displayName(settings.showNickName)) }}
+              span(v-else)
+                span.next-server-suggest__line-text {{ info.server.line }}
+                span {{ t("線") }}
+                span  / {{ t(info.boss.displayName(settings.showNickName)) }}
+              span(v-if="info.boss.isDead()")  / {{ info.boss.respawnAt.format('HH:mm:ss') }}
+      div(v-if="settings.showBossInfoRecentRespawn")
+        el-card.recent-boss-kill
+          template(#header)
+            span.boss-info__header {{ t("怪物復活時間") }}
+          el-row(v-for="(info, i) of recentRespawn" :key="i")
+            el-col
+              span(v-if="settings.language.startsWith('en')")
+                span {{ t("線") }}
+                span.next-server-suggest__line-text {{ info.server.line }}
+                span {{ t(info.boss.displayName(settings.showNickName)) }}
+              span(v-else)
+                span.next-server-suggest__line-text {{ info.server.line }}
+                span {{ t("線") }}
+                span  / {{ t(info.boss.displayName(settings.showNickName)) }}
+              span(v-if="info.boss.isDead()")  / {{ info.boss.respawnAt.format('HH:mm:ss') }}
       div(v-if="settings.showBossInfoRecentKilled")
         el-card.recent-boss-kill
           template(#header)
             span.boss-info__header {{ t("最近死亡怪物") }}
           el-row(v-for="(info, i) of recentBossKills" :key="i")
-            el-col(v-if="settings.language.startsWith('en')")
-              span {{ t("線") }}
-              span.next-server-suggest__line-text {{ info.server.line }}
-              span / {{ t(info.boss.displayName(settings.showNickName)) }} / {{ info.boss.killAt.format('HH:mm:ss') }}
-            el-col(v-else)
-              span.next-server-suggest__line-text {{ info.server.line }}
-              span  {{ t("線") }} / {{ t(info.boss.displayName(settings.showNickName)) }} / {{ info.boss.killAt.format('HH:mm:ss') }}
+            el-col
+              span(v-if="settings.language.startsWith('en')")
+                span {{ t("線") }}
+                span.next-server-suggest__line-text {{ info.server.line }}
+                span / {{ t(info.boss.displayName(settings.showNickName)) }} / {{ info.boss.killAt.format('HH:mm:ss') }}
+              span(v-else)
+                span.next-server-suggest__line-text {{ info.server.line }}
+                span  {{ t("線") }} / {{ t(info.boss.displayName(settings.showNickName)) }} / {{ info.boss.killAt.format('HH:mm:ss') }}
 </template>
 
 <style lang="sass">
@@ -1297,4 +1344,6 @@ el-config-provider(:locale="settings.locale")
       width: 100%
     .el-card
       width: 100%
+.boss-info-container__info--dead
+  color: gray
 </style>
