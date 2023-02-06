@@ -18,6 +18,7 @@ export const messages = {
 
     哈伯拉: "哈伯拉",
     絲奇拉: "絲奇拉",
+    鈉克亞: "鈉克亞",
 
     花: "花",
     狗: "狗",
@@ -33,6 +34,8 @@ export const messages = {
 
     海拉: "海拉",
     河馬: "河馬",
+
+    蜘蛛: "蜘蛛",
 
     亞夏: "亞夏",
     人工島: "人工島",
@@ -160,6 +163,7 @@ export const messages = {
 
     哈伯拉: "哈伯拉",
     絲奇拉: "丝奇拉",
+    鈉克亞: "钠克亚",
 
     花: "花",
     狗: "狗",
@@ -175,6 +179,8 @@ export const messages = {
 
     海拉: "海拉",
     河馬: "河马",
+
+    蜘蛛: "蜘蛛",
 
     亞夏: "亚夏",
     人工島: "人工岛",
@@ -301,7 +307,9 @@ export const messages = {
 
     哈伯拉: "Habera",
     絲奇拉: "Squirrel",
+    鈉克亞: "Nakya",
 
+    海拉: "Harrah",
     科爾頓: "Culton",
 
     花: "Flower",
@@ -316,8 +324,9 @@ export const messages = {
     沙鱷魚: "Sand Crocodile",
     棉花: "Cotton",
 
-    海拉: "Harrah",
     河馬: "Hippo",
+
+    蜘蛛: "Spider",
 
     亞夏: "Aesperia",
     人工島: "Artificial island",
@@ -447,6 +456,7 @@ export const messages = {
 
     哈伯拉: "ハベラ",
     絲奇拉: "リスラ",
+    鈉克亞: "なかや",
 
     花: "花",
     狗: "犬",
@@ -462,6 +472,8 @@ export const messages = {
 
     海拉: "ヘラ",
     河馬: "カバ",
+
+    蜘蛛: "クモ",
 
     亞夏: "アッシャイ",
     人工島: "人工島",
