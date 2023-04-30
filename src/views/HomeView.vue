@@ -1142,11 +1142,11 @@ el-config-provider(:locale="settings.locale")
         div {{ t("進場") }}
         template(#reference)
           el-button(@click="dialogs.connectDialogVisible = true" :icon="View" type="primary" :title="t('進場')")
-      span.settings_menu-icon(v-if="serverState.connectionState" @click="onClickAskStopHosting" style="cursor: pointer")
+      div.settings_menu-icon(v-if="serverState.connectionState" @click="onClickAskStopHosting" style="cursor: pointer")
         el-tooltip(:content="t('允許同步')" placement="top-start")
           el-icon
             Share
-      span.settings_menu-icon(v-if="clientState.connectionState === ConnectionState.connected" @click="onClickAskStopFollowing" style="cursor: pointer")
+      div.settings_menu-icon(v-if="clientState.connectionState === ConnectionState.connected" @click="onClickAskStopFollowing" style="cursor: pointer")
         el-tooltip(:content="t('正在跟蹤')" placement="top-start")
           el-icon
             View
@@ -1268,6 +1268,8 @@ el-config-provider(:locale="settings.locale")
 
 .settings_menu-icon
   margin-left: 12px
+  display: flex
+  align-items: center
 
 .setting_menu__id
   margin-left: 12px
