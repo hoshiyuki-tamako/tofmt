@@ -1,7 +1,7 @@
 import { Expose, Type } from "class-transformer";
 import { ArrayMaxSize, IsInt, Max, Min } from "class-validator";
 import Enumerable from "linq";
-import { LRUCache } from "lru-cache";
+import LRU from "lru-cache";
 
 import BossEntity from "./BossEntity";
 
@@ -18,7 +18,7 @@ export default class Server {
   bosses = [] as BossEntity[];
 
   #bossLookup?: Record<string, BossEntity>;
-  #getBossesCache = new LRUCache<string, BossEntity[]>({ max: 256 });
+  #getBossesCache = new LRU<string, BossEntity[]>({ max: 256 });
 
   constructor(line = 0, bosses: BossEntity[] = []) {
     this.line = line;

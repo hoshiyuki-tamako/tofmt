@@ -3,7 +3,7 @@ import { ArrayMaxSize, IsString, MaxLength } from "class-validator";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import Enumerable from "linq";
-import { LRUCache } from "lru-cache";
+import LRU from "lru-cache";
 
 import BossEntity from "./BossEntity";
 import Server from "./Server";
@@ -116,7 +116,7 @@ export default class Area {
 
   #largestServerLine?: number;
   #serverLookup?: Record<number, Server>;
-  #getServersCache = new LRUCache<string, Server[]>({ max: 16 });
+  #getServersCache = new LRU<string, Server[]>({ max: 16 });
 
   constructor(name = "", servers: Server[] = []) {
     this.name = name;
