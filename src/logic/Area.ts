@@ -3,7 +3,7 @@ import { ArrayMaxSize, IsString, MaxLength } from "class-validator";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import Enumerable from "linq";
-import LRU from "lru-cache";
+import { LRUCache } from "lru-cache";
 
 import BossEntity from "./BossEntity";
 import Server from "./Server";
@@ -52,6 +52,13 @@ export default class Area {
         ["哈伯拉", "哈伯拉", "#F0DA52"],
         ["絲奇拉", "絲奇拉", "#737B98"],
         ["鈉克亞", "蜘蛛", "#DA3011"],
+      ],
+    },
+    九域: {
+      maxLine: 50,
+      bosses: [
+        ["朱厭", "朱厭", "#706464"],
+        ["玄鴉", "玄鴉", "#7A7778"],
       ],
     },
   };
@@ -109,7 +116,7 @@ export default class Area {
 
   #largestServerLine?: number;
   #serverLookup?: Record<number, Server>;
-  #getServersCache = new LRU<string, Server[]>({ max: 16 });
+  #getServersCache = new LRUCache<string, Server[]>({ max: 16 });
 
   constructor(name = "", servers: Server[] = []) {
     this.name = name;
