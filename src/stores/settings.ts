@@ -114,13 +114,17 @@ export const useSettings = defineStore(
       save.areas = "";
     };
 
-    const resetMaxServerLine = () => {
-      Object.keys(maxServerLine).forEach((k) => delete maxServerLine[k]);
+    const setMaxServerLine = () => {
       for (const [name, { maxLine }] of Object.entries(Area.defaultAreas)) {
         if (!maxServerLine[name]) {
           maxServerLine[name] = maxLine;
         }
       }
+    };
+
+    const resetMaxServerLine = () => {
+      Object.keys(maxServerLine).forEach((k) => delete maxServerLine[k]);
+      setMaxServerLine();
     };
 
     const resetSettings = () => {
@@ -170,9 +174,7 @@ export const useSettings = defineStore(
     });
 
     // init
-    if (!Object.keys(maxServerLine).length) {
-      resetMaxServerLine();
-    }
+    setMaxServerLine();
 
     return {
       id,
