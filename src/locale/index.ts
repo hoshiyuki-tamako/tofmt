@@ -23,6 +23,7 @@ export const messages = {
 
     朱厭: "朱厭",
     玄鴉: "玄鴉",
+    饕餮: "饕餮",
 
     花: "花",
     狗: "狗",
@@ -171,6 +172,7 @@ export const messages = {
 
     朱厭: "朱厌",
     玄鴉: "玄鸦",
+    饕餮: "饕餮",
 
     花: "花",
     狗: "狗",
@@ -314,12 +316,13 @@ export const messages = {
     海拉: "Harrah",
     科爾頓: "Culton",
 
-    哈伯拉: "Habera",
-    絲奇拉: "Squirrel",
+    哈伯拉: "Habela",
+    絲奇拉: "Scylla",
     鈉克亞: "Nakya",
 
-    朱厭: "Zhu Yan",
-    玄鴉: "Xuan ya",
+    朱厭: "Zhuyan",
+    玄鴉: "Xuanya",
+    饕餮: "Taotie",
 
     花: "Flower",
     狗: "Dog",
@@ -340,8 +343,8 @@ export const messages = {
     人工島: "Artificial island",
     維拉: "Vera",
     深淵: "Abyss",
-    溟海: "Ming sea",
-    九域: "Jiu yu",
+    溟海: "Innars",
+    九域: "Domain 9",
 
     線路群組: "By line",
     怪物群組: "By boss",
@@ -470,6 +473,7 @@ export const messages = {
 
     朱厭: "朱厭",
     玄鴉: "玄鴉",
+    饕餮: "饕餮",
 
     花: "花",
     狗: "犬",
