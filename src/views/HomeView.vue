@@ -1095,7 +1095,7 @@ el-config-provider(:locale="settings.locale")
       div.view-table-mobile__rows(v-if="isMobileSize")
         div(v-for="row of areaTable.rows" :key="`${row.area.name}${row.server.line}${row.boss.name}`")
           el-card
-            template(#header) {{ t(row.area.name) }} {{ row.server.line }}
+            template(#header) 【{{ t(row.area.name) }}】 {{ row.server.line }}
             div.view-table-mobile__row-card-container
               div {{ t(row.boss.displayName(settings.showNickName)) }}
               div.view-table-mobile__time-edit-container
