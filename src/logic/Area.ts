@@ -8,63 +8,15 @@ import LRU from "lru-cache";
 import BossEntity from "./BossEntity";
 import Server from "./Server";
 
+import { areas, lineLimit } from "../settings";
+
 dayjs.extend(duration);
 
 export default class Area {
-  static defaultAreas = {
-    亞夏: {
-      maxLine: 50,
-      bosses: [
-        // name, nickName, color
-        ["羅貝拉格", "花", "#BB0001"],
-        ["阿波菲斯", "狗", "#86775F"],
-        ["急凍機甲", "龍蝦", "#910913"],
-        ["索貝克", "鱷魚", "#3A4454"],
-        ["露琪亞", "媽", "#BDA8A0"],
-        ["巴巴羅薩", "雙頭狗", "#613655"],
-      ],
-    },
-    人工島: {
-      maxLine: 50,
-      bosses: [
-        ["間躍雙火龍", "火龍", "#5E5F84"],
-        ["吞噬者", "青蛙", "#668291"],
-      ],
-    },
-    維拉: {
-      maxLine: 50,
-      bosses: [
-        ["瑪格瑪", "鹿", "#353231"],
-        ["倫迪爾", "沙鱷魚", "#404546"],
-        ["伊娃", "棉花", "#FFFFFF"],
-      ],
-    },
-    深淵: {
-      maxLine: 50,
-      bosses: [
-        ["海拉", "海拉", "#15151F"],
-        ["科爾頓", "河馬", "#48525D"],
-      ],
-    },
-    溟海: {
-      maxLine: 50,
-      bosses: [
-        ["哈伯拉", "哈伯拉", "#F0DA52"],
-        ["絲奇拉", "絲奇拉", "#737B98"],
-        ["鈉克亞", "蜘蛛", "#DA3011"],
-      ],
-    },
-    九域: {
-      maxLine: 50,
-      bosses: [
-        ["朱厭", "朱厭", "#706464"],
-        ["玄鴉", "玄鴉", "#7A7778"],
-      ],
-    },
-  };
+  static defaultAreas = areas;
 
   static limits = {
-    line: 255,
+    line: lineLimit,
   };
 
   static generateAreas(
