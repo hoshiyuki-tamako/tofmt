@@ -15,40 +15,44 @@ export default abstract class Message {
   };
 
   static packr = new Packr();
+  static zstd: Zstd;
+  static async zstdLoad() {
+    return (this.zstd ??= await Zstd.load());
+  }
 
   protected static _fromPlain<T extends object>(
     type: ClassType<T>,
-    plain: Record<string, unknown>
+    plain: Record<string, unknown>,
   ) {
     return transformAndValidateSync(type, plain) as T;
   }
 
   protected static _fromMessagePack<T extends object>(
     type: ClassType<T>,
-    buffer: Uint8Array
+    buffer: Uint8Array,
   ) {
     return this._fromPlain(type, this.packr.unpack(buffer));
   }
 
   protected static async _fromMessagePackZstd<T extends object>(
     type: ClassType<T>,
-    buffer: Uint8Array
+    buffer: Uint8Array,
   ) {
-    const zstd = await Zstd.load();
+    const zstd = await this.zstdLoad();
     return this._fromMessagePack(type, zstd.decompress(buffer));
   }
 
   protected static _fromMessagePackZstdBase64<T extends object>(
     type: ClassType<T>,
-    base64Data: string
+    base64Data: string,
   ) {
     return this._fromMessagePackZstd(
       type,
       new Uint8Array(
         atob(base64Data)
           .split("")
-          .map((c) => c.charCodeAt(0))
-      )
+          .map((c) => c.charCodeAt(0)),
+      ),
     );
   }
 
@@ -77,15 +81,18 @@ export default abstract class Message {
   }
 
   async toMessagePackZstd(
-    compressionLevel = Message.defaultOptions.compressionLevel
+    compressionLevel = Message.defaultOptions.compressionLevel,
   ) {
-    const zstd = await Zstd.load();
+    const zstd = await Message.zstdLoad();
     return zstd.compress(this.toMessagePack(), compressionLevel) as Uint8Array;
   }
 
   async toMessagePackZstdBase64() {
     return btoa(
-      String.fromCharCode.apply(null, (await this.toMessagePackZstd()) as never)
+      String.fromCharCode.apply(
+        null,
+        (await this.toMessagePackZstd()) as never,
+      ),
     );
   }
 }
