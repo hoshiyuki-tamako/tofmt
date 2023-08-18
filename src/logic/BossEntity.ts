@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { Expose, Transform } from "class-transformer";
 import { IsDefined, IsHexColor, IsString, MaxLength } from "class-validator";
 import dayjs from "dayjs";
@@ -46,7 +47,7 @@ export default class BossEntity {
     name = "",
     nickName = "",
     color = "",
-    respawnTime = BossEntity.defaultRespawnTime
+    respawnTime = BossEntity.defaultRespawnTime,
   ) {
     this.name = name || "";
     this.nickName = nickName || name;

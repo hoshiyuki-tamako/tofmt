@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { RouterView } from "vue-router";
 import "reflect-metadata";
+import HomeView from "@/views/HomeView.vue";
 </script>
 
 <template lang="pug">
 el-container
-  RouterView
+HomeView
   el-footer
     el-divider
     p

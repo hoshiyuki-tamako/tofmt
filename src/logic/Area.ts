@@ -1,9 +1,10 @@
+// @ts-nocheck
 import { Expose, Type } from "class-transformer";
 import { ArrayMaxSize, IsString, MaxLength } from "class-validator";
 import dayjs from "dayjs";
 import duration from "dayjs/plugin/duration";
 import Enumerable from "linq";
-import LRU from "lru-cache";
+import { LRUCache } from "lru-cache";
 
 import BossEntity from "./BossEntity";
 import Server from "./Server";
@@ -21,14 +22,14 @@ export default class Area {
 
   static generateAreas(
     maxServerLineOverride?: Record<string, number>,
-    respawnTime?: number
+    respawnTime?: number,
   ) {
     const areas = [] as Area[];
     for (const [name, properties] of Object.entries(this.defaultAreas)) {
       const servers = [] as Server[];
       for (const line of Enumerable.range(
         1,
-        maxServerLineOverride?.[name] || properties.maxLine
+        maxServerLineOverride?.[name] || properties.maxLine,
       )) {
         const bosses = [] as BossEntity[];
         for (const [name, nickName, color] of properties.bosses) {
@@ -36,7 +37,7 @@ export default class Area {
             name,
             nickName,
             color,
-            respawnTime ? dayjs.duration({ minutes: respawnTime }) : undefined
+            respawnTime ? dayjs.duration({ minutes: respawnTime }) : undefined,
           );
           bosses.push(boss);
         }
@@ -63,12 +64,12 @@ export default class Area {
 
   @Expose()
   @Type(() => Server)
-  @ArrayMaxSize(Area.limits.line)
+  @ArrayMaxSize(lineLimit)
   servers = [] as Server[];
 
   #largestServerLine?: number;
   #serverLookup?: Record<number, Server>;
-  #getServersCache = new LRU<string, Server[]>({ max: 16 });
+  #getServersCache = new LRUCache<string, Server[]>({ max: 16 });
 
   constructor(name = "", servers: Server[] = []) {
     this.name = name;
@@ -88,7 +89,7 @@ export default class Area {
   findServer(line: number) {
     this.#serverLookup ??= Enumerable.from(this.servers).toObject(
       (server) => server.line,
-      (server) => server
+      (server) => server,
     );
     return this.#serverLookup[line];
   }

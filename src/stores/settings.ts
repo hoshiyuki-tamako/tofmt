@@ -5,10 +5,10 @@ import "dayjs/locale/zh-tw";
 
 import Area from "@/logic/Area";
 import { useDark } from "@vueuse/core";
-import en from "element-plus/lib/locale/lang/en";
-import ja from "element-plus/lib/locale/lang/ja";
-import zhCn from "element-plus/lib/locale/lang/zh-cn";
-import zhTw from "element-plus/lib/locale/lang/zh-tw";
+import en from "element-plus/es/locale/lang/en";
+import ja from "element-plus/es/locale/lang/ja";
+import zhCn from "element-plus/es/locale/lang/zh-cn";
+import zhTw from "element-plus/es/locale/lang/zh-tw";
 import { defineStore } from "pinia";
 import { computed, reactive, ref } from "vue";
 
@@ -218,5 +218,5 @@ export const useSettings = defineStore(
   },
   {
     persist: true,
-  }
+  },
 );

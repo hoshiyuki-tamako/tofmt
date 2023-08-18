@@ -6,7 +6,7 @@ For managing farming tof boss items
 
 ## requirement
 
-- nodejs 18
+- nodejs 20
 
 ## setup / running for development
 
@@ -24,6 +24,7 @@ npm run build
 ## main framework / library use
 
 - vuejs 3
+- typescript 4
 - pinia
 - element-plus
 - peerjs

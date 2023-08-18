@@ -13,7 +13,7 @@ import {
 import { useI18n } from "vue-i18n";
 import Enumerable from "linq";
 import Peer from "peerjs";
-import dayjs from "dayjs";
+import dayjs, { type Dayjs } from "dayjs";
 import Area from "@/logic/Area";
 import MobileDetect from "mobile-detect";
 import SyncMessage from "@/logic/network/SyncMessage";
@@ -36,7 +36,7 @@ if (urlLocale && supportedLanguages.find(({ value }) => value === urlLocale)) {
 // servers
 type ConnectedPeerInfo = {
   connectionState: ConnectionState;
-  connectedAt: dayjs.Dayjs;
+  connectedAt: Dayjs;
 };
 
 enum ConnectionState {
@@ -235,7 +235,7 @@ function createSyncMessage(includeExcludes = true) {
   return SyncMessage.create(
     areas,
     includeExcludes ? bossesExclude.value : [],
-    includeExcludes ? linesExclude.value : []
+    includeExcludes ? linesExclude.value : [],
   );
 }
 
@@ -251,14 +251,16 @@ function send<T>(message: T) {
 }
 
 async function sendMonsterTable() {
-  send(await createSyncMessage().toMessagePackZstd());
+  if (connections.length) {
+    send(await createSyncMessage().toMessagePackZstd());
+  }
 }
 
 async function receiveMonsterTable(rawData: ArrayBuffer) {
   try {
     if (!(rawData instanceof ArrayBuffer)) {
       throw new MessageError(
-        `receiveMonsterTable rawData type incorrect ${typeof rawData}`
+        `receiveMonsterTable rawData type incorrect ${typeof rawData}`,
       );
     }
     const data = await SyncMessage.fromMessagePackZstd(new Uint8Array(rawData));
@@ -284,7 +286,7 @@ async function receiveMonsterTable(rawData: ArrayBuffer) {
 // bindings
 const timetableTabs = reactive({
   areaActiveTab: Object.keys(
-    Area.defaultAreas
+    Area.defaultAreas,
   )[0] as keyof typeof Area.defaultAreas,
   bossActiveTab: "",
   bossActiveLineTab: "1",
@@ -303,11 +305,11 @@ const forceUpdateSettingSelectExcludeMenu = ref(false);
 const md = new MobileDetect(window.navigator.userAgent);
 const isMobileDevice = !!(md.mobile() || md.tablet());
 const isMobileSize = ref(
-  window.matchMedia("screen and (max-width: 650px)").matches
+  window.matchMedia("screen and (max-width: 650px)").matches,
 );
 window.addEventListener("resize", () => {
   isMobileSize.value = window.matchMedia(
-    "screen and (max-width: 650px)"
+    "screen and (max-width: 650px)",
   ).matches;
   forceUpdateSettingSelectExcludeMenu.value =
     !forceUpdateSettingSelectExcludeMenu.value;
@@ -333,7 +335,7 @@ resetAreas();
 function resetAreas() {
   areas = Area.generateAreas(
     settings.maxServerLine,
-    settings.monsterRespawnTime
+    settings.monsterRespawnTime,
   );
 }
 
@@ -347,7 +349,7 @@ function bossSetTimeout(
   area: Area,
   line: number,
   boss: BossEntity,
-  ms: number
+  ms: number,
 ) {
   buttonResetTimeoutHandlers.push(
     setTimeout(() => {
@@ -357,11 +359,11 @@ function bossSetTimeout(
           t("respawn_line_notification", {
             line,
             name: t(boss.displayName(settings.showNickName)),
-          })
+          }),
         );
       }
       updateBossInfo();
-    }, ms)
+    }, ms),
   );
 }
 
@@ -408,7 +410,7 @@ function updateBossInfo() {
   updateNextLineSuggestServers(
     timetableTabs.areaActiveTab,
     timetableTabs.bossActiveTab,
-    now
+    now,
   );
   updateNextLineSuggestServers(timetableTabs.areaActiveTab, "", now);
   updateBossRecentRespawn(info);
@@ -418,7 +420,7 @@ function updateBossInfo() {
 function updateNextLineSuggestServers(
   mapName: string,
   bossName = "",
-  now = dayjs()
+  now = dayjs(),
 ) {
   const info = (function* () {
     for (const server of areas
@@ -539,7 +541,7 @@ function areasAsTableWithFilter() {
       (!areaTable.filters.lines.length ||
         areaTable.filters.lines.includes(row.server.line)) &&
       (!areaTable.filters.bosses.length ||
-        areaTable.filters.bosses.includes(row.boss.name))
+        areaTable.filters.bosses.includes(row.boss.name)),
   );
 
   const dataOrdered = (() => {
@@ -592,10 +594,11 @@ function onChangeAreaTab(name?: keyof typeof Area.defaultAreas) {
 
   timetableTabs.bossActiveTab =
     area
-      .selectMany((a) =>
-        a.servers[0]?.bosses
-          .filter((b) => !bossesExclude.value.includes(b.name))
-          .map((b) => b.name)
+      .selectMany(
+        (a) =>
+          a.servers[0]?.bosses
+            .filter((b) => !bossesExclude.value.includes(b.name))
+            .map((b) => b.name),
       )
       .firstOrDefault() ?? "";
 
@@ -801,7 +804,7 @@ async function onChangeMonsterRespawnTime() {
 
 async function importAreas(
   base64: string,
-  loadSavedExcludes = settings.loadSavedExcludes
+  loadSavedExcludes = settings.loadSavedExcludes,
 ) {
   const syncMessage = await SyncMessage.fromMessagePackZstdBase64(base64);
   areas = syncMessage.payload.areas;
@@ -1310,7 +1313,7 @@ el-config-provider(:locale="settings.locale")
   width: 1200px
   grid-template-columns: repeat(20, 1fr)
   gap: 12px
-  @media screen and (max-width: 1260px)
+  @media screen and (max-width: 1280px)
     width: 600px
     grid-template-columns: repeat(10, 1fr)
   @media screen and (max-width: 670px)

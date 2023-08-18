@@ -33,7 +33,7 @@ export default class SyncMessage extends Message {
   static create(
     areas = [] as Area[],
     bossesExclude = [] as string[],
-    linesExclude = [] as number[]
+    linesExclude = [] as number[],
   ) {
     const message = new this();
     message.payload.areas = areas;
