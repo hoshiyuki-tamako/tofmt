@@ -321,7 +321,7 @@ export const messages = {
     鈉克亞: "Nakya",
 
     朱厭: "Zhuyan",
-    玄鴉: "Xuanya",
+    玄鴉: "Black Crow Dark Wretch",
     饕餮: "Taotie",
 
     花: "Flower",
@@ -472,7 +472,7 @@ export const messages = {
     鈉克亞: "なかや",
 
     朱厭: "朱厭",
-    玄鴉: "玄鴉",
+    玄鴉: "闇鬼·烏",
     饕餮: "饕餮",
 
     花: "花",
