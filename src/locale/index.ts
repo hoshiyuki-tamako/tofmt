@@ -25,6 +25,7 @@ export const messages = {
     玄鴉: "玄鴉",
     饕餮: "饕餮",
     刑天: "刑天",
+    奼鮫: "奼鮫",
 
     花: "花",
     狗: "狗",
@@ -43,6 +44,7 @@ export const messages = {
 
     朱: "朱",
     鴉: "鴉",
+    人魚: "人魚",
 
     亞夏: "亞夏",
     人工島: "人工島",
@@ -178,6 +180,7 @@ export const messages = {
     玄鴉: "玄鸦",
     饕餮: "饕餮",
     刑天: "刑天",
+    奼鮫: "姹鲛",
 
     花: "花",
     狗: "狗",
@@ -196,6 +199,7 @@ export const messages = {
 
     朱: "朱",
     鴉: "鸦",
+    人魚: "人鱼",
 
     亞夏: "亚夏",
     人工島: "人工岛",
@@ -332,6 +336,7 @@ export const messages = {
     玄鴉: "Black Crow Dark Wretch",
     饕餮: "Taotie",
     刑天: "Xing Tian",
+    奼鮫: "Cha Jiao",
 
     花: "Flower",
     狗: "Dog",
@@ -350,6 +355,7 @@ export const messages = {
 
     朱: "Pig",
     鴉: "Crow",
+    人魚: "Mermaid",
 
     亞夏: "Aesperia",
     人工島: "Artificial island",
@@ -487,6 +493,7 @@ export const messages = {
     玄鴉: "闇鬼·烏",
     饕餮: "饕餮",
     刑天: "刑天",
+    奼鮫: "奼鮫",
 
     花: "花",
     狗: "犬",
@@ -505,6 +512,7 @@ export const messages = {
 
     朱: "朱",
     鴉: "烏",
+    人魚: "マーメイド",
 
     亞夏: "アッシャイ",
     人工島: "人工島",
