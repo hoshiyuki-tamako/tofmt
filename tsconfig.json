@@ -1,7 +1,9 @@
 {
-  "extends": "@vue/tsconfig/tsconfig.web.json",
+  "extends": "@vue/tsconfig/tsconfig.dom.json",
   "include": ["env.d.ts", "src/**/*", "src/**/*.vue"],
   "compilerOptions": {
+    "module": "es2022",
+    "moduleResolution": "node",
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
@@ -9,6 +11,7 @@
     "experimentalDecorators": true,
     "jsx": "preserve",
     "types": ["element-plus/global"],
+    "removeComments": true
   },
 
   "references": [
