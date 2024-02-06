@@ -383,11 +383,7 @@ async function toggle(area: Area, line: number, boss: BossEntity) {
   }
 
   updateBossInfo();
-
-  await Promise.all([
-    sendMonsterTable(),
-    settings.autosave ? save() : undefined,
-  ]);
+  await sendAndSave();
 }
 
 function* bossInfoGenerator(now = dayjs()) {
@@ -643,6 +639,7 @@ function resetButtonTimeout() {
 async function save(showNotification = false) {
   try {
     settings.save.areas = await createSyncMessage().toMessagePackZstdBase64();
+
     if (showNotification) {
       ElMessage.success(t("成功儲存"));
     }
@@ -652,6 +649,28 @@ async function save(showNotification = false) {
     ElMessage.success(t("儲存失敗"));
     return false;
   }
+}
+
+async function loadSave() {
+  if (!settings.save.areas) {
+    return;
+  }
+
+  try {
+    await importAreas(settings.save.areas, false);
+  } catch (e) {
+    console.error(e);
+    ElNotification.error(t("格式錯誤"));
+  }
+
+  await sendMonsterTable();
+}
+
+async function sendAndSave() {
+  await Promise.all([
+    sendMonsterTable(),
+    settings.autosave ? save() : undefined,
+  ]);
 }
 
 async function onClickSave() {
@@ -685,15 +704,7 @@ async function onClickLoad() {
     return;
   }
 
-  try {
-    await importAreas(settings.save.areas, false);
-    ElMessage.success(t("成功讀取"));
-  } catch (e) {
-    console.error(e);
-    ElNotification.error(t("格式錯誤"));
-  }
-
-  await sendMonsterTable();
+  await loadSave();
 }
 
 async function onClickResetMerge() {
@@ -725,7 +736,7 @@ async function onClickResetMerge() {
     console.info(e);
   }
 
-  await sendMonsterTable();
+  await sendAndSave();
 }
 
 async function onClickReset() {
@@ -887,11 +898,20 @@ function onOpenSetting() {
 
 onLanguageChange();
 onChangeAreaTab();
+
+// load save if autosave is enabled
+const globalLoading = ref(false);
+if (settings.autosave && settings.save.areas) {
+  globalLoading.value = true;
+  loadSave().then(() => {
+    globalLoading.value = false;
+  });
+}
 </script>
 
 <template lang="pug">
 el-config-provider(:locale="settings.locale")
-  el-main
+  el-main(v-loading="globalLoading")
     el-dialog(v-model="dialogs.settingDialogVisible" width="80%" :fullscreen="isMobileSize" @open="onOpenSetting")
       el-tabs
         el-tab-pane(:label="t('界面')" lazy)
@@ -899,7 +919,7 @@ el-config-provider(:locale="settings.locale")
             tr
               td {{ t("語言") }}
               td
-                el-select(v-model="settings.language" @change="onLanguageChange" size="large")
+                el-select(v-model="settings.language" @change="onLanguageChange" size="large" style="width: 120px")
                   el-option(v-for="language of supportedLanguages" :key="language.value" :label="language.label" :value="language.value")
             tr
               td {{ t("顯視模式") }}
@@ -1092,7 +1112,7 @@ el-config-provider(:locale="settings.locale")
         div
           div {{ t("排序") }}
           div
-            el-select(v-model="areaTable.sort" placeholder=" " @change="setViewTableRows" filterable)
+            el-select(v-model="areaTable.sort" placeholder=" " @change="setViewTableRows" filterable style="width: 150px")
               el-option(v-for="o of areaTable.sortOptions" :key="o.value" :label="t(o.text)" :value="o.value")
       br
       div.view-table-mobile__rows(v-if="isMobileSize")

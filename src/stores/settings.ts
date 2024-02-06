@@ -69,7 +69,7 @@ export const useSettings = defineStore(
     const darkMode = useDark();
     const showNickName = ref(false);
     const viewMode = ref("byBoss");
-    const autosave = ref(false);
+    const autosave = ref(true);
     const loadSavedExcludes = ref(true);
 
     // notification
@@ -134,7 +134,7 @@ export const useSettings = defineStore(
       darkMode.value = useDark().value;
       showNickName.value = false;
       viewMode.value = "byBoss";
-      autosave.value = false;
+      autosave.value = true;
       loadSavedExcludes.value = true;
 
       showUserConnectNotification.value = true;
