@@ -36,6 +36,8 @@ export const viewModes = {
   byBoss: "怪物群組",
 };
 
+export const predefineBossColor = ["#1D32B9", "#155C25"];
+
 function getUserCurrentLanguage() {
   let language = navigator.languages?.[0] ?? navigator.language ?? "en";
   language = language.toLocaleLowerCase();
@@ -59,7 +61,7 @@ function randomId() {
   return Math.random().toString(36).slice(2).toLocaleUpperCase();
 }
 
-export const useSettings = defineStore(
+export const useSettingStore = defineStore(
   "settings",
   () => {
     // normal setting
@@ -76,6 +78,7 @@ export const useSettings = defineStore(
     const showUserConnectNotification = ref(true);
     const showUserDisconnectNotification = ref(false);
     const showMonsterRespawnNotification = ref(false);
+    const soundMonsterRespawnNotification = ref(false);
 
     // view table
     const areaTable = reactive({
@@ -91,6 +94,7 @@ export const useSettings = defineStore(
     const showBossInfoRecentRespawn = ref(true);
     const showBossInfoRecentKilled = ref(true);
     const bossInfoCount = ref(10);
+    const bossColor = ref("");
 
     // area setting
     const maxServerLine = reactive({} as Record<string, number>);
@@ -136,10 +140,12 @@ export const useSettings = defineStore(
       viewMode.value = "byBoss";
       autosave.value = true;
       loadSavedExcludes.value = true;
+      bossColor.value = "";
 
       showUserConnectNotification.value = true;
       showUserDisconnectNotification.value = false;
       showMonsterRespawnNotification.value = false;
+      soundMonsterRespawnNotification.value = false;
 
       areaTable.pageSize = 10;
 
@@ -185,10 +191,12 @@ export const useSettings = defineStore(
       viewMode,
       autosave,
       loadSavedExcludes,
+      bossColor,
 
       showUserConnectNotification,
       showUserDisconnectNotification,
       showMonsterRespawnNotification,
+      soundMonsterRespawnNotification,
 
       areaTable,
 

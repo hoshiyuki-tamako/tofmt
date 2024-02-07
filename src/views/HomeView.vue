@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from "vue";
 import { ElMessage, ElMessageBox, ElNotification } from "element-plus";
-import { useSettings, viewModes, supportedLanguages } from "@/stores/settings";
+import {
+  useSettingStore,
+  viewModes,
+  supportedLanguages,
+  predefineBossColor,
+} from "@/stores/settings";
 import {
   Setting,
   Share,
@@ -9,11 +14,13 @@ import {
   Search,
   DocumentAdd,
   Reading,
+  VideoPlay,
 } from "@element-plus/icons-vue";
 import { useI18n } from "vue-i18n";
 import Enumerable from "linq";
 import Peer from "peerjs";
 import dayjs, { type Dayjs } from "dayjs";
+import { Synth } from "Tone";
 import Area from "@/logic/Area";
 import MobileDetect from "mobile-detect";
 import SyncMessage from "@/logic/network/SyncMessage";
@@ -24,7 +31,7 @@ import type { DataConnection } from "peerjs";
 import type BossEntity from "@/logic/BossEntity";
 
 // stores
-const settings = useSettings();
+const settings = useSettingStore();
 const { t, locale } = useI18n();
 
 const url = new URL(window.location.toString());
@@ -354,6 +361,8 @@ function bossSetTimeout(
   buttonResetTimeoutHandlers.push(
     setTimeout(() => {
       bossButtonStates[area.name][line][boss.name] = true;
+      updateBossInfo();
+
       if (settings.showMonsterRespawnNotification) {
         ElNotification(
           t("respawn_line_notification", {
@@ -362,7 +371,9 @@ function bossSetTimeout(
           }),
         );
       }
-      updateBossInfo();
+      if (settings.soundMonsterRespawnNotification) {
+        playAlertTone();
+      }
     }, ms),
   );
 }
@@ -590,11 +601,10 @@ function onChangeAreaTab(name?: keyof typeof Area.defaultAreas) {
 
   timetableTabs.bossActiveTab =
     area
-      .selectMany(
-        (a) =>
-          a.servers[0]?.bosses
-            .filter((b) => !bossesExclude.value.includes(b.name))
-            .map((b) => b.name),
+      .selectMany((a) =>
+        a.servers[0]?.bosses
+          .filter((b) => !bossesExclude.value.includes(b.name))
+          .map((b) => b.name),
       )
       .firstOrDefault() ?? "";
 
@@ -896,6 +906,24 @@ function onOpenSetting() {
     !forceUpdateSettingSelectExcludeMenu.value;
 }
 
+let synth: Synth | null;
+let clearAudioChannelTimeout: number | null;
+
+function playAlertTone() {
+  synth ??= new Synth().toDestination();
+  synth.triggerAttackRelease("C4", "8n");
+
+  if (clearAudioChannelTimeout) {
+    clearTimeout(clearAudioChannelTimeout);
+  }
+
+  clearAudioChannelTimeout = setTimeout(() => {
+    synth?.disconnect();
+    synth = null;
+    clearAudioChannelTimeout = null;
+  }, 3000);
+}
+
 onLanguageChange();
 onChangeAreaTab();
 
@@ -914,17 +942,17 @@ el-config-provider(:locale="settings.locale")
   el-main(v-loading="globalLoading")
     el-dialog(v-model="dialogs.settingDialogVisible" width="80%" :fullscreen="isMobileSize" @open="onOpenSetting")
       el-tabs
-        el-tab-pane(:label="t('界面')" lazy)
+        el-tab-pane(:label="t('設定')" lazy)
           table.setting-table
             tr
               td {{ t("語言") }}
               td
-                el-select(v-model="settings.language" @change="onLanguageChange" size="large" style="width: 120px")
+                el-select(v-model="settings.language" @change="onLanguageChange" size="large" style="width: 240px")
                   el-option(v-for="language of supportedLanguages" :key="language.value" :label="language.label" :value="language.value")
             tr
               td {{ t("顯視模式") }}
               td
-                el-select(v-model="settings.viewMode" size="large")
+                el-select(v-model="settings.viewMode" size="large" style="width: 240px")
                   el-option(v-for="[key, label] of Object.entries(viewModes)" :key="key" :label="t(label)" :value="key")
             tr
               td {{ t("深色模式") }}
@@ -934,6 +962,10 @@ el-config-provider(:locale="settings.locale")
               td {{ t("怪物暱稱") }}
               td
                 el-switch(v-model="settings.showNickName")
+            tr
+              td {{ t("自動儲存 (離線/分享生效)") }}
+              td
+                el-switch(v-model="settings.autosave")
           el-divider
           table.setting-table
             tr
@@ -948,12 +980,17 @@ el-config-provider(:locale="settings.locale")
               td {{ t("怪物復活通知") }}
               td
                 el-switch(v-model="settings.showMonsterRespawnNotification")
+            tr
+              td {{ t("聲效通知") }}
+              td
+                el-switch(v-model="settings.soundMonsterRespawnNotification")
+                el-button.setting-table__sound-alert-test(@click="playAlertTone" :icon="VideoPlay" circle)
           el-divider
           table.setting-table
             tr
               td {{ t("查找表格每頁數量") }}
               td
-                el-input-number(v-model="settings.areaTable.pageSize" :min="1" :max="10" :step="1" step-strictly)
+                el-input-number(v-model="settings.areaTable.pageSize" :min="1" :max="100" :step="1" step-strictly)
           el-divider
           table.setting-table
             tr
@@ -980,12 +1017,12 @@ el-config-provider(:locale="settings.locale")
               td {{ t("怪物知訊數量") }}
               td
                 el-input-number(v-model="settings.bossInfoCount" :min="1" :max="10" :step="1" @change="updateBossInfo" step-strictly)
-        el-tab-pane(:label="t('功能')" lazy)
-          table.setting-table
             tr
-              td {{ t("自動儲存 (離線/分享生效)") }}
+              td {{ t("固定按鈕顏色") }}
               td
-                el-switch(v-model="settings.autosave")
+                el-color-picker(v-model="settings.bossButtonColor" :predefine="predefineBossColor" size="large")
+          el-divider
+          h4 {{ t("分享設定") }}
           div(style="display: flex")
             el-input(v-model="settings.id" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
               template(#prepend) ID
@@ -1184,7 +1221,7 @@ el-config-provider(:locale="settings.locale")
             el-tab-pane(v-for="server of area.getServers(linesExclude)" :label="`${server.line}`" :name="`${server.line}`" :key="server.line" lazy)
               div.monster-trace__container
                 div.monster-trace__button-container(v-for="boss in server.getBosses(bossesExclude)" :key="boss.name")
-                  el-button.monster-trace__button.monster-trace__button--name(v-if="bossButtonStates[area.name][server.line][boss.name]" @click="toggle(area, server.line, boss)" :color="boss.color") {{ t(boss.displayName(settings.showNickName)) }}
+                  el-button.monster-trace__button.monster-trace__button--name(v-if="bossButtonStates[area.name][server.line][boss.name]" @click="toggle(area, server.line, boss)" :color="settings.bossButtonColor || boss.color") {{ t(boss.displayName(settings.showNickName)) }}
                   template(v-else)
                     el-popconfirm(:title="`${t('確認復活怪物')}?`" @confirm="toggle(area, server.line, boss)" width="auto")
                       template(#reference)
@@ -1195,7 +1232,7 @@ el-config-provider(:locale="settings.locale")
               div.monster-trace__container
                 div.monster-trace__button-container(v-for="line in Enumerable.from(area.getServers(linesExclude)).select((s) => s.line)" :key="line")
                   template(v-for="boss of [area.findBoss(line, _boss.name)]" :key="boss.name")
-                    el-button.monster-trace__button(v-if="bossButtonStates[area.name][line][boss.name]" @click="toggle(area, line, boss)" :color="boss.color") {{ line }}
+                    el-button.monster-trace__button(v-if="bossButtonStates[area.name][line][boss.name]" @click="toggle(area, line, boss)" :color="settings.bossButtonColor || boss.color") {{ line }}
                     template(v-else)
                       el-popconfirm(:title="`${t('確認復活怪物')}?`" @confirm="toggle(area, line, boss)" width="auto")
                         template(#reference)
@@ -1280,6 +1317,8 @@ el-config-provider(:locale="settings.locale")
   width: 100%
   td:nth-child(odd)
     width: 0
+.setting-table__sound-alert-test
+  margin-left: 12px
 
 .action-menu
   display: flex
