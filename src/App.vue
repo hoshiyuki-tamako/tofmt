@@ -5,10 +5,10 @@ import HomeView from '@/views/HomeView.vue'
 
 <template lang="pug">
 el-container
-HomeView
-el-footer
-  el-divider
-  p
-    span Twitter &nbsp;
-    el-link(href="https://twitter.com/hoshiyuki_git" target="_blank" rel="noopener" type="primary") @hoshiyuki_git
+  HomeView
+  el-footer
+    el-divider
+    p
+      span Twitter &nbsp;
+      el-link(href="https://twitter.com/hoshiyuki_git" target="_blank" rel="noopener" type="primary") @hoshiyuki_git
 </template>
