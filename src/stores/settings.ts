@@ -4,7 +4,7 @@ import 'dayjs/locale/zh-cn'
 import 'dayjs/locale/zh-tw'
 
 import Area from '@/logic/Area'
-import { useDark } from '@vueuse/core'
+import { useDark, usePreferredDark, usePreferredLanguages } from '@vueuse/core'
 import en from 'element-plus/es/locale/lang/en'
 import ja from 'element-plus/es/locale/lang/ja'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
@@ -39,22 +39,18 @@ export const viewModes = {
 export const predefineBossColor = ['#1D32B9', '#155C25']
 
 function getUserCurrentLanguage() {
-  let language = navigator.languages?.[0] ?? navigator.language ?? 'en'
-  language = language.toLocaleLowerCase()
-
-  if (language.startsWith('en')) {
-    language = 'en'
-  } else if (language.startsWith('ja')) {
-    language = 'ja'
-  } else if (language.startsWith('zh')) {
-    if (!['zh-tw', 'zh-cn'].includes(language)) {
-      language = 'zh-tw'
+  for (const language of usePreferredLanguages().value.map((language) => language.toLocaleLowerCase())) {
+    if (language.startsWith('ja')) {
+      return 'ja'
+    } else if (language.startsWith('zh-cn')) {
+      return 'zh-cn'
+    } else if (language.startsWith('zh')) {
+      return 'zh-tw'
+    } else if (language.startsWith('en')) {
+      return 'en'
     }
-  } else {
-    language = 'en'
   }
-
-  return language
+  return 'en'
 }
 
 function randomId() {
@@ -138,7 +134,7 @@ export const useSettingStore = defineStore(
       resetId()
       targetId.value = ''
       language.value = getUserCurrentLanguage()
-      darkMode.value = useDark().value
+      darkMode.value = usePreferredDark().value
       showNickName.value = false
       viewMode.value = 'byBoss'
       autosave.value = true
