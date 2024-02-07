@@ -14,7 +14,7 @@ import {
   Search,
   DocumentAdd,
   Reading,
-  VideoPlay
+  CaretRight
 } from '@element-plus/icons-vue'
 import { useI18n } from 'vue-i18n'
 import Enumerable from 'linq'
@@ -931,13 +931,13 @@ el-config-provider(:locale="settings.locale")
               td {{ t("聲效通知") }}
               td
                 el-switch(v-model="settings.soundMonsterRespawnNotification")
-                el-button.setting-table__sound-alert-test(@click="playAlertTone" :icon="VideoPlay" circle)
+                el-button.setting-table__sound-alert-test(@click="playAlertTone" :icon="CaretRight" circle)
           el-divider
           table.setting-table
             tr
               td {{ t("查找表格每頁數量") }}
               td
-                el-input-number(v-model="settings.areaTable.pageSize" :min="1" :max="100" :step="1" step-strictly)
+                el-input-number(v-model="settings.areaTable.pageSize" :min="1" :max="20" :step="1" step-strictly)
           el-divider
           table.setting-table
             tr
