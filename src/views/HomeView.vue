@@ -889,7 +889,7 @@ el-config-provider(:locale="settings.locale")
   el-main(v-loading="globalLoading")
     el-dialog(v-model="dialogs.settingDialogVisible" width="80%" :fullscreen="isMobileSize" @open="onOpenSetting")
       el-tabs
-        el-tab-pane(:label="t('設定')" lazy)
+        el-tab-pane(:label="t('一般')" lazy)
           table.setting-table
             tr
               td {{ t("語言") }}
@@ -968,15 +968,6 @@ el-config-provider(:locale="settings.locale")
               td {{ t("固定按鈕顏色") }}
               td
                 el-color-picker(v-model="settings.bossButtonColor" :predefine="predefineBossColor" size="large")
-          el-divider
-          h4 {{ t("分享設定") }}
-          div(style="display: flex")
-            el-input(v-model="settings.id" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
-              template(#prepend) ID
-            el-button(@click="settings.resetId" :disabled="hasConnection") {{ t("隨機 ID") }}
-          div(style="display: flex")
-            el-input(v-model="settings.targetId" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
-              template(#prepend) {{ t("目標 ID") }}
 
         el-tab-pane(:label="t('時間表')" name="bossInfo" lazy)
           table.setting-table.setting-timetable-table
@@ -1018,6 +1009,15 @@ el-config-provider(:locale="settings.locale")
           el-divider
           el-button(@click="onClickResetMerge" type="warning") {{ t("以目前時間重置時間表") }}
 
+        el-tab-pane(:label="t('分享設定')" lazy)
+          div(style="display: flex")
+            el-input(v-model="settings.id" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
+              template(#prepend) ID
+            el-button(@click="settings.resetId" :disabled="hasConnection") {{ t("隨機 ID") }}
+          div(style="display: flex")
+            el-input(v-model="settings.targetId" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
+              template(#prepend) {{ t("目標 ID") }}
+
         el-tab-pane(:label="`${t('導入')}/${t('導出')}`" lazy)
           div.setting-row
             el-button(@click="onClickImport") {{ t("導入") }}
@@ -1027,6 +1027,10 @@ el-config-provider(:locale="settings.locale")
               el-switch(v-model="settings.loadSavedExcludes" style="margin-left: 12px")
           div.setting-row(v-loading="importLoading || exportLoading")
             el-input(v-model="settings.importExportText" :rows="16" type="textarea")
+
+        el-tab-pane(:label="t('備忘錄')" lazy)
+          div.setting-row
+            el-input(v-model="settings.memo" :rows="16" type="textarea")
 
         el-tab-pane(:label="t('重置')" lazy)
           el-button(@click="onClickReset" type="danger") {{ t("重置時間表") }}
