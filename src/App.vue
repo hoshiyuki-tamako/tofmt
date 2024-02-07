@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import "reflect-metadata";
-import HomeView from "@/views/HomeView.vue";
+import 'reflect-metadata'
+import HomeView from '@/views/HomeView.vue'
 </script>
 
 <template lang="pug">

@@ -3,7 +3,6 @@ import { fileURLToPath, URL } from "node:url";
 import { defineConfig } from "vite";
 import vue from "@vitejs/plugin-vue";
 import vuePugPlugin from "vue-pug-plugin";
-import vueJsx from "@vitejs/plugin-vue-jsx";
 import { createHtmlPlugin } from "vite-plugin-html";
 import { viteSingleFile } from "vite-plugin-singlefile";
 import AutoImport from "unplugin-auto-import/vite";
@@ -19,7 +18,6 @@ export default defineConfig({
     Components({
       resolvers: [ElementPlusResolver()],
     }),
-    vueJsx(),
     vue({
       template: {
         preprocessOptions: {

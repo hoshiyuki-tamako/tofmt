@@ -1,82 +1,77 @@
 // @ts-nocheck
-import { Expose, Transform } from "class-transformer";
-import { IsDefined, IsHexColor, IsString, MaxLength } from "class-validator";
-import dayjs from "dayjs";
-import duration from "dayjs/plugin/duration";
+import { Expose, Transform } from 'class-transformer'
+import { IsDefined, IsHexColor, IsString, MaxLength } from 'class-validator'
+import dayjs from 'dayjs'
+import duration from 'dayjs/plugin/duration'
 
-dayjs.extend(duration);
+dayjs.extend(duration)
 
 export default class BossEntity {
-  static defaultRespawnTime = dayjs.duration({ hours: 1 });
+  static defaultRespawnTime = dayjs.duration({ hours: 1 })
 
   // data
   @Expose()
   @IsString()
   @MaxLength(255)
-  name = "";
+  name = ''
 
   @Expose()
   @IsString()
   @MaxLength(255)
-  nickName = "";
+  nickName = ''
 
   @Expose()
   @Transform(({ value }) => dayjs(value), { toClassOnly: true })
   @Transform(({ value }) => +value, { toPlainOnly: true })
   @IsDefined()
-  killAt = dayjs.unix(0);
+  killAt = dayjs.unix(0)
 
   @Expose()
   @Transform(({ value }) => dayjs.duration({ milliseconds: value }), {
-    toClassOnly: true,
+    toClassOnly: true
   })
   @Transform(({ value }) => value.asMilliseconds(), { toPlainOnly: true })
   @IsDefined()
-  respawnTime = BossEntity.defaultRespawnTime;
+  respawnTime = BossEntity.defaultRespawnTime
 
   get respawnAt() {
-    return this.killAt.add(this.respawnTime);
+    return this.killAt.add(this.respawnTime)
   }
 
   // ui
   @Expose()
   @IsHexColor()
-  color = "";
+  color = ''
 
-  constructor(
-    name = "",
-    nickName = "",
-    color = "",
-    respawnTime = BossEntity.defaultRespawnTime,
-  ) {
-    this.name = name || "";
-    this.nickName = nickName || name;
-    this.color = color || "";
-    this.respawnTime = respawnTime || BossEntity.defaultRespawnTime;
+  constructor(name = '', nickName = '', color = '', respawnTime = BossEntity.defaultRespawnTime) {
+    this.name = name || ''
+    this.nickName = nickName || name
+    this.color = color || ''
+    this.respawnTime = respawnTime || BossEntity.defaultRespawnTime
   }
 
   isAlive(now = dayjs()) {
-    return now.diff(this.killAt.add(this.respawnTime)) > 0;
+    return now.diff(this.killAt.add(this.respawnTime)) > 0
   }
 
   isDead(now = dayjs()) {
-    return !this.isAlive(now);
+    return !this.isAlive(now)
   }
 
   respawn() {
-    this.killAt = dayjs.unix(0);
+    this.killAt = dayjs.unix(0)
   }
 
   kill(now = dayjs()) {
-    this.killAt = now;
+    this.killAt = now
   }
 
   timeUntilRespawnMs(now = dayjs()) {
-    const ms = this.killAt.add(this.respawnTime).diff(now);
-    return ms >= 0 ? ms : 0;
+    const ms = this.killAt.add(this.respawnTime).diff(now)
+    return ms >= 0 ? ms : 0
   }
 
   displayName(nickName = false) {
-    return nickName ? this.nickName : this.name;
+    return nickName ? this.nickName : this.name
   }
 }

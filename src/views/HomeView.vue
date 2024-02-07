@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from "vue";
-import { ElMessage, ElMessageBox, ElNotification } from "element-plus";
+import { computed, reactive, ref } from 'vue'
+import { ElMessage, ElMessageBox, ElNotification } from 'element-plus'
 import {
   useSettingStore,
   viewModes,
   supportedLanguages,
-  predefineBossColor,
-} from "@/stores/settings";
+  predefineBossColor
+} from '@/stores/settings'
 import {
   Setting,
   Share,
@@ -14,227 +14,226 @@ import {
   Search,
   DocumentAdd,
   Reading,
-  VideoPlay,
-} from "@element-plus/icons-vue";
-import { useI18n } from "vue-i18n";
-import Enumerable from "linq";
-import Peer from "peerjs";
-import dayjs, { type Dayjs } from "dayjs";
-import { Synth } from "Tone";
-import Area from "@/logic/Area";
-import MobileDetect from "mobile-detect";
-import SyncMessage from "@/logic/network/SyncMessage";
-import MessageError from "@/exceptions/MessageError";
+  VideoPlay
+} from '@element-plus/icons-vue'
+import { useI18n } from 'vue-i18n'
+import Enumerable from 'linq'
+import Peer from 'peerjs'
+import dayjs, { type Dayjs } from 'dayjs'
+import { Synth } from 'Tone'
+import Area from '@/logic/Area'
+import MobileDetect from 'mobile-detect'
+import SyncMessage from '@/logic/network/SyncMessage'
+import MessageError from '@/exceptions/MessageError'
 
-import type Server from "@/logic/Server";
-import type { DataConnection } from "peerjs";
-import type BossEntity from "@/logic/BossEntity";
+import type Server from '@/logic/Server'
+import type { DataConnection } from 'peerjs'
+import type BossEntity from '@/logic/BossEntity'
 
 // stores
-const settings = useSettingStore();
-const { t, locale } = useI18n();
+const settings = useSettingStore()
+const { t, locale } = useI18n()
 
-const url = new URL(window.location.toString());
-const urlLocale = url.searchParams.get("locale");
+const url = new URL(window.location.toString())
+const urlLocale = url.searchParams.get('locale')
 if (urlLocale && supportedLanguages.find(({ value }) => value === urlLocale)) {
-  settings.language = urlLocale;
+  settings.language = urlLocale
 }
 
 // servers
 type ConnectedPeerInfo = {
-  connectionState: ConnectionState;
-  connectedAt: Dayjs;
-};
+  connectionState: ConnectionState
+  connectedAt: Dayjs
+}
 
 enum ConnectionState {
   disconnected,
   connecting,
-  connected,
+  connected
 }
 
 // peer
-const connectionPrefix = "tofmt";
-let peer: Peer | null;
-let connections = [] as DataConnection[];
+const connectionPrefix = 'tofmt'
+let peer: Peer | null
+let connections = [] as DataConnection[]
 const serverState = reactive({
-  id: "",
+  id: '',
   connectionState: ConnectionState.disconnected,
-  connectedPeers: {} as Record<string, ConnectedPeerInfo>,
-});
+  connectedPeers: {} as Record<string, ConnectedPeerInfo>
+})
 
 function getPeerId(id: string) {
-  return `${connectionPrefix}-${id}`;
+  return `${connectionPrefix}-${id}`
 }
 const hasConnection = computed(() => {
-  return !!(serverState.connectionState || clientState.connectionState);
-});
+  return !!(serverState.connectionState || clientState.connectionState)
+})
 
 // client
-let serverConnection: DataConnection | null;
+let serverConnection: DataConnection | null
 const clientState = reactive({
   connectionState: ConnectionState.disconnected,
-  latestSyncMessageCreatedAt: dayjs.unix(0),
-});
+  latestSyncMessageCreatedAt: dayjs.unix(0)
+})
 
 // server functions
 function onServerError(e: Error) {
-  ElNotification.error(e.message);
-  console.error(e);
+  ElNotification.error(e.message)
+  console.error(e)
 }
 
 function onClickHostTable() {
-  hostServerCleanUp();
-  onClickCloseFollowing();
+  hostServerCleanUp()
+  onClickCloseFollowing()
 
   if (!settings.id) {
-    ElNotification.error(t("ID 不能為空"));
-    return;
+    ElNotification.error(t('ID 不能為空'))
+    return
   }
 
-  ElMessage(`${t("正在啟動分享")} ${settings.id}`);
-  serverState.connectionState = ConnectionState.connecting;
+  ElMessage(`${t('正在啟動分享')} ${settings.id}`)
+  serverState.connectionState = ConnectionState.connecting
 
-  peer = new Peer(getPeerId(settings.id));
-  peer.on("open", () => {
-    serverState.connectionState = ConnectionState.connected;
-    dialogs.hostDialogVisible = false;
-    ElMessage.success(t("已允許同步"));
-  });
-  peer.on("error", (err) => {
-    ElMessage.error(err.message);
-  });
-  peer.on("connection", (conn) => {
-    connections.push(conn);
+  peer = new Peer(getPeerId(settings.id))
+  peer.on('open', () => {
+    serverState.connectionState = ConnectionState.connected
+    dialogs.hostDialogVisible = false
+    ElMessage.success(t('已允許同步'))
+  })
+  peer.on('error', (err) => {
+    ElMessage.error(err.message)
+  })
+  peer.on('connection', (conn) => {
+    connections.push(conn)
     serverState.connectedPeers[conn.peer] = {
       connectionState: ConnectionState.connecting,
-      connectedAt: dayjs(),
-    };
-    conn.on("open", () => {
+      connectedAt: dayjs()
+    }
+    conn.on('open', () => {
       if (serverState.connectedPeers[conn.peer]) {
-        serverState.connectedPeers[conn.peer].connectionState =
-          ConnectionState.connected;
+        serverState.connectedPeers[conn.peer].connectionState = ConnectionState.connected
       }
       if (settings.showUserConnectNotification) {
-        ElMessage(t("user_connect", { id: conn.peer }));
+        ElMessage(t('user_connect', { id: conn.peer }))
       }
-      return sendMonsterTable();
-    });
-    conn.on("close", () => {
+      return sendMonsterTable()
+    })
+    conn.on('close', () => {
       connections = Enumerable.from(connections)
         .where((c) => c !== conn)
-        .toArray();
-      delete serverState.connectedPeers[conn.peer];
+        .toArray()
+      delete serverState.connectedPeers[conn.peer]
       if (settings.showUserDisconnectNotification) {
-        ElMessage(t("user_disconnect", { id: conn.peer }));
+        ElMessage(t('user_disconnect', { id: conn.peer }))
       }
-    });
-    conn.on("error", onServerError);
-  });
-  peer.on("disconnected", () => {
-    hostServerCleanUp();
-  });
-  peer.on("error", (e) => {
-    onServerError(e);
-    onClickCloseHosting();
-  });
+    })
+    conn.on('error', onServerError)
+  })
+  peer.on('disconnected', () => {
+    hostServerCleanUp()
+  })
+  peer.on('error', (e) => {
+    onServerError(e)
+    onClickCloseHosting()
+  })
 }
 
 function hostServerCleanUp() {
   for (const connection of connections) {
-    connection.close();
+    connection.close()
   }
-  connections = [];
-  peer?.disconnect();
-  peer = null;
-  serverState.connectionState = ConnectionState.disconnected;
-  serverState.connectedPeers = {};
+  connections = []
+  peer?.disconnect()
+  peer = null
+  serverState.connectionState = ConnectionState.disconnected
+  serverState.connectedPeers = {}
 }
 
 function onClickCloseHosting() {
-  hostServerCleanUp();
+  hostServerCleanUp()
 }
 
 function onClickFollowTable() {
   if (!settings.targetId) {
-    ElNotification.error(t("目標 ID 不能為空"));
-    return;
+    ElNotification.error(t('目標 ID 不能為空'))
+    return
   }
 
   if (!settings.id) {
-    settings.resetId();
+    settings.resetId()
   }
 
-  onClickCloseFollowing();
-  onClickCloseHosting();
+  onClickCloseFollowing()
+  onClickCloseHosting()
 
-  ElMessage(`${t("正在連接到")} ${settings.targetId}`);
-  clientState.connectionState = ConnectionState.connecting;
+  ElMessage(`${t('正在連接到')} ${settings.targetId}`)
+  clientState.connectionState = ConnectionState.connecting
 
-  peer = new Peer(getPeerId(settings.id));
-  peer.on("open", () => {
-    serverConnection = peer?.connect(getPeerId(settings.targetId)) || null;
-    serverConnection?.on("open", () => {
-      dialogs.connectDialogVisible = false;
-      clientState.connectionState = ConnectionState.connected;
-      ElMessage.success(t("已跟蹤"));
-    });
-    serverConnection?.on("data", (data) => {
-      return receiveMonsterTable(data as ArrayBuffer);
-    });
-    serverConnection?.on("close", () => {
+  peer = new Peer(getPeerId(settings.id))
+  peer.on('open', () => {
+    serverConnection = peer?.connect(getPeerId(settings.targetId)) || null
+    serverConnection?.on('open', () => {
+      dialogs.connectDialogVisible = false
+      clientState.connectionState = ConnectionState.connected
+      ElMessage.success(t('已跟蹤'))
+    })
+    serverConnection?.on('data', (data) => {
+      return receiveMonsterTable(data as ArrayBuffer)
+    })
+    serverConnection?.on('close', () => {
       if (clientState.connectionState) {
-        onServerError(new Error(t("跟蹤連接已斷開")));
+        onServerError(new Error(t('跟蹤連接已斷開')))
       }
-      onClickCloseFollowing();
-    });
-  });
-  peer.on("disconnected", () => {
-    followTableCleanUp();
-    ElMessage(t("已停止跟蹤"));
-  });
-  peer.on("error", (e) => {
-    onServerError(e);
-    onClickCloseFollowing();
-  });
+      onClickCloseFollowing()
+    })
+  })
+  peer.on('disconnected', () => {
+    followTableCleanUp()
+    ElMessage(t('已停止跟蹤'))
+  })
+  peer.on('error', (e) => {
+    onServerError(e)
+    onClickCloseFollowing()
+  })
 }
 
 function followTableCleanUp() {
-  serverConnection?.close();
-  peer?.disconnect();
-  peer = null;
-  serverConnection = null;
-  clientState.connectionState = ConnectionState.disconnected;
-  clientState.latestSyncMessageCreatedAt = dayjs.unix(0);
+  serverConnection?.close()
+  peer?.disconnect()
+  peer = null
+  serverConnection = null
+  clientState.connectionState = ConnectionState.disconnected
+  clientState.latestSyncMessageCreatedAt = dayjs.unix(0)
 
   // restore setting
-  bossesExclude.value = settings.bossesExclude;
-  linesExclude.value = settings.linesExclude;
+  bossesExclude.value = settings.bossesExclude
+  linesExclude.value = settings.linesExclude
 }
 
 function onClickCloseFollowing() {
-  clientState.connectionState = ConnectionState.disconnected;
-  followTableCleanUp();
+  clientState.connectionState = ConnectionState.disconnected
+  followTableCleanUp()
 }
 
 async function onClickAskStopHosting() {
   try {
-    await ElMessageBox.confirm(`${t("是否停止分享")}?`, "", {
-      type: "warning",
-    });
-    onClickCloseHosting();
+    await ElMessageBox.confirm(`${t('是否停止分享')}?`, '', {
+      type: 'warning'
+    })
+    onClickCloseHosting()
   } catch (e) {
-    console.info(e);
+    console.info(e)
   }
 }
 
 async function onClickAskStopFollowing() {
   try {
-    await ElMessageBox.confirm(`${t("是否停止跟蹤")}?`, "", {
-      type: "warning",
-    });
-    onClickCloseFollowing();
+    await ElMessageBox.confirm(`${t('是否停止跟蹤')}?`, '', {
+      type: 'warning'
+    })
+    onClickCloseFollowing()
   } catch (e) {
-    console.info(e);
+    console.info(e)
   }
 }
 
@@ -242,159 +241,139 @@ function createSyncMessage(includeExcludes = true) {
   return SyncMessage.create(
     areas,
     includeExcludes ? bossesExclude.value : [],
-    includeExcludes ? linesExclude.value : [],
-  );
+    includeExcludes ? linesExclude.value : []
+  )
 }
 
 function send<T>(message: T) {
   for (const conn of connections) {
-    if (
-      serverState.connectedPeers[conn.peer]?.connectionState ===
-      ConnectionState.connected
-    ) {
-      conn.send(message);
+    if (serverState.connectedPeers[conn.peer]?.connectionState === ConnectionState.connected) {
+      conn.send(message)
     }
   }
 }
 
 async function sendMonsterTable() {
   if (connections.length) {
-    send(await createSyncMessage().toMessagePackZstd());
+    send(await createSyncMessage().toMessagePackZstd())
   }
 }
 
 async function receiveMonsterTable(rawData: ArrayBuffer) {
   try {
     if (!(rawData instanceof ArrayBuffer)) {
-      throw new MessageError(
-        `receiveMonsterTable rawData type incorrect ${typeof rawData}`,
-      );
+      throw new MessageError(`receiveMonsterTable rawData type incorrect ${typeof rawData}`)
     }
-    const data = await SyncMessage.fromMessagePackZstd(new Uint8Array(rawData));
+    const data = await SyncMessage.fromMessagePackZstd(new Uint8Array(rawData))
     if (data.cmd !== SyncMessage.cmd) {
-      throw new MessageError(`unknown command ${data.cmd}`);
+      throw new MessageError(`unknown command ${data.cmd}`)
     }
     if (clientState.latestSyncMessageCreatedAt > data.createdAt) {
-      return;
+      return
     }
-    clientState.latestSyncMessageCreatedAt = data.createdAt;
-    areas = data.payload.areas;
-    bossesExclude.value = data.payload.bossesExclude;
-    linesExclude.value = data.payload.linesExclude;
-    onChangeBossTab();
-    forceUpdateTimetable.value = !forceUpdateTimetable.value;
+    clientState.latestSyncMessageCreatedAt = data.createdAt
+    areas = data.payload.areas
+    bossesExclude.value = data.payload.bossesExclude
+    linesExclude.value = data.payload.linesExclude
+    onChangeBossTab()
+    forceUpdateTimetable.value = !forceUpdateTimetable.value
   } catch (e) {
-    console.error(e);
-    ElNotification.error(t("格式錯誤"));
-    followTableCleanUp();
+    console.error(e)
+    ElNotification.error(t('格式錯誤'))
+    followTableCleanUp()
   }
 }
 
 // bindings
 const timetableTabs = reactive({
-  areaActiveTab: Object.keys(
-    Area.defaultAreas,
-  )[0] as keyof typeof Area.defaultAreas,
-  bossActiveTab: "",
-  bossActiveLineTab: "1",
-});
+  areaActiveTab: Object.keys(Area.defaultAreas)[0] as keyof typeof Area.defaultAreas,
+  bossActiveTab: '',
+  bossActiveLineTab: '1'
+})
 
 const dialogs = reactive({
   settingDialogVisible: false,
   hostDialogVisible: false,
   connectDialogVisible: false,
-  viewDialogVisible: false,
-});
+  viewDialogVisible: false
+})
 
-const forceUpdateTimetable = ref(false);
-const forceUpdateSettingSelectExcludeMenu = ref(false);
+const forceUpdateTimetable = ref(false)
+const forceUpdateSettingSelectExcludeMenu = ref(false)
 
-const md = new MobileDetect(window.navigator.userAgent);
-const isMobileDevice = !!(md.mobile() || md.tablet());
-const isMobileSize = ref(
-  window.matchMedia("screen and (max-width: 650px)").matches,
-);
-window.addEventListener("resize", () => {
-  isMobileSize.value = window.matchMedia(
-    "screen and (max-width: 650px)",
-  ).matches;
-  forceUpdateSettingSelectExcludeMenu.value =
-    !forceUpdateSettingSelectExcludeMenu.value;
-});
+const md = new MobileDetect(window.navigator.userAgent)
+const isMobileDevice = !!(md.mobile() || md.tablet())
+const isMobileSize = ref(window.matchMedia('screen and (max-width: 650px)').matches)
+window.addEventListener('resize', () => {
+  isMobileSize.value = window.matchMedia('screen and (max-width: 650px)').matches
+  forceUpdateSettingSelectExcludeMenu.value = !forceUpdateSettingSelectExcludeMenu.value
+})
 
-const bossesExclude = ref(settings.bossesExclude);
-const linesExclude = ref(settings.linesExclude);
+const bossesExclude = ref(settings.bossesExclude)
+const linesExclude = ref(settings.linesExclude)
 
 // areas
 type BossInfo = {
-  server: Server;
-  boss: BossEntity;
-  isDead: boolean;
-};
-
-const nextLineSuggestServerByBoss = reactive({} as Record<string, BossInfo[]>);
-const nextLineSuggestServer = ref([] as BossInfo[]);
-const recentBossKills = ref([] as BossInfo[]);
-const recentRespawn = ref([] as BossInfo[]);
-
-let areas = [] as Area[];
-resetAreas();
-function resetAreas() {
-  areas = Area.generateAreas(
-    settings.maxServerLine,
-    settings.monsterRespawnTime,
-  );
+  server: Server
+  boss: BossEntity
+  isDead: boolean
 }
 
-let buttonResetTimeoutHandlers = [] as number[];
-type BossButtonState = Record<string, Record<number, Record<string, boolean>>>;
-const bossButtonStates = reactive({} as BossButtonState);
-onChangeBossTab();
+const nextLineSuggestServerByBoss = reactive({} as Record<string, BossInfo[]>)
+const nextLineSuggestServer = ref([] as BossInfo[])
+const recentBossKills = ref([] as BossInfo[])
+const recentRespawn = ref([] as BossInfo[])
+
+let areas = [] as Area[]
+resetAreas()
+function resetAreas() {
+  areas = Area.generateAreas(settings.maxServerLine, settings.monsterRespawnTime)
+}
+
+let buttonResetTimeoutHandlers = [] as ReturnType<typeof setTimeout>[]
+type BossButtonState = Record<string, Record<number, Record<string, boolean>>>
+const bossButtonStates = reactive({} as BossButtonState)
+onChangeBossTab()
 
 // functions
-function bossSetTimeout(
-  area: Area,
-  line: number,
-  boss: BossEntity,
-  ms: number,
-) {
+function bossSetTimeout(area: Area, line: number, boss: BossEntity, ms: number) {
   buttonResetTimeoutHandlers.push(
     setTimeout(() => {
-      bossButtonStates[area.name][line][boss.name] = true;
-      updateBossInfo();
+      bossButtonStates[area.name][line][boss.name] = true
+      updateBossInfo()
 
       if (settings.showMonsterRespawnNotification) {
         ElNotification(
-          t("respawn_line_notification", {
+          t('respawn_line_notification', {
             line,
-            name: t(boss.displayName(settings.showNickName)),
-          }),
-        );
+            name: t(boss.displayName(settings.showNickName))
+          })
+        )
       }
       if (settings.soundMonsterRespawnNotification) {
-        playAlertTone();
+        playAlertTone()
       }
-    }, ms),
-  );
+    }, ms)
+  )
 }
 
 async function toggle(area: Area, line: number, boss: BossEntity) {
   if (clientState.connectionState) {
-    ElMessage(t("正在跟隨, 不能修改資料"));
-    return;
+    ElMessage(t('正在跟隨, 不能修改資料'))
+    return
   }
 
   if (boss.isAlive()) {
-    boss.kill();
-    bossSetTimeout(area, line, boss, boss.timeUntilRespawnMs());
-    bossButtonStates[area.name][line][boss.name] = false;
+    boss.kill()
+    bossSetTimeout(area, line, boss, boss.timeUntilRespawnMs())
+    bossButtonStates[area.name][line][boss.name] = false
   } else {
-    boss.respawn();
-    bossButtonStates[area.name][line][boss.name] = true;
+    boss.respawn()
+    bossButtonStates[area.name][line][boss.name] = true
   }
 
-  updateBossInfo();
-  await sendAndSave();
+  updateBossInfo()
+  await sendAndSave()
 }
 
 function* bossInfoGenerator(now = dayjs()) {
@@ -404,65 +383,56 @@ function* bossInfoGenerator(now = dayjs()) {
         yield {
           server,
           boss,
-          isDead: boss.isDead(now),
-        };
+          isDead: boss.isDead(now)
+        }
       }
     }
   }
 }
 
 function updateBossInfo() {
-  const now = dayjs();
-  const info = Enumerable.from(bossInfoGenerator(now)).toArray();
-  updateNextLineSuggestServers(
-    timetableTabs.areaActiveTab,
-    timetableTabs.bossActiveTab,
-    now,
-  );
-  updateNextLineSuggestServers(timetableTabs.areaActiveTab, "", now);
-  updateBossRecentRespawn(info);
-  updateRecentBossKills(info);
+  const now = dayjs()
+  const info = Enumerable.from(bossInfoGenerator(now)).toArray()
+  updateNextLineSuggestServers(timetableTabs.areaActiveTab, timetableTabs.bossActiveTab, now)
+  updateNextLineSuggestServers(timetableTabs.areaActiveTab, '', now)
+  updateBossRecentRespawn(info)
+  updateRecentBossKills(info)
 }
 
-function updateNextLineSuggestServers(
-  mapName: string,
-  bossName = "",
-  now = dayjs(),
-) {
+function updateNextLineSuggestServers(mapName: string, bossName = '', now = dayjs()) {
   const info = (function* () {
-    for (const server of areas
-      .find((a) => a.name === mapName)
-      ?.getServers(linesExclude.value) ?? []) {
+    for (const server of areas.find((a) => a.name === mapName)?.getServers(linesExclude.value) ??
+      []) {
       for (const boss of server.getBosses(bossesExclude.value)) {
         yield {
           server,
           boss,
-          isDead: boss.isDead(now),
-        };
+          isDead: boss.isDead(now)
+        }
       }
     }
-  })();
+  })()
 
   const allBosses = Enumerable.from(info)
     .where((o) => !bossName || o.boss.name === bossName)
     .orderBy((o) => +o.boss.killAt)
-    .toArray();
+    .toArray()
   const suggest = Enumerable.from(allBosses)
     .where((o) => !o.isDead)
     .take(settings.bossInfoCount)
-    .toArray();
+    .toArray()
 
   if (suggest.length < settings.bossInfoCount) {
     const respawnBoss = Enumerable.from(allBosses)
       .skip(suggest.length)
-      .take(settings.bossInfoCount - suggest.length);
-    suggest.push(...respawnBoss);
+      .take(settings.bossInfoCount - suggest.length)
+    suggest.push(...respawnBoss)
   }
 
   if (bossName) {
-    nextLineSuggestServerByBoss[bossName] = suggest;
+    nextLineSuggestServerByBoss[bossName] = suggest
   } else {
-    nextLineSuggestServer.value = suggest;
+    nextLineSuggestServer.value = suggest
   }
 }
 
@@ -471,7 +441,7 @@ function updateBossRecentRespawn(info: BossInfo[]) {
     .where((o) => o.isDead)
     .orderBy((o) => +o.boss.killAt)
     .take(settings.bossInfoCount)
-    .toArray();
+    .toArray()
 }
 
 function updateRecentBossKills(info: BossInfo[]) {
@@ -479,50 +449,50 @@ function updateRecentBossKills(info: BossInfo[]) {
     .where((o) => !!+o.boss.killAt)
     .orderByDescending((o) => +o.boss.killAt)
     .take(settings.bossInfoCount)
-    .toArray();
+    .toArray()
 }
 
 // view table
 type AreaTableRow = {
-  area: Area;
-  server: Server;
-  boss: BossEntity;
-  killAt: Date | null;
-};
+  area: Area
+  server: Server
+  boss: BossEntity
+  killAt: Date | null
+}
 
 const areaTable = reactive({
   currentPage: 1,
-  sort: "killAt",
-  order: "descending",
+  sort: 'killAt',
+  order: 'descending',
   pagerCount: 5,
   rows: [] as AreaTableRow[],
   filters: {
     areas: [] as string[],
     lines: [] as number[],
-    bosses: [] as string[],
+    bosses: [] as string[]
   },
   sortOptions: [
     {
-      text: "地圖",
-      value: "area",
+      text: '地圖',
+      value: 'area'
     },
     {
-      text: "線路",
-      value: "server",
+      text: '線路',
+      value: 'server'
     },
     {
-      text: "怪物名字",
-      value: "boss",
+      text: '怪物名字',
+      value: 'boss'
     },
     {
-      text: "擊殺時間",
-      value: "killAt",
-    },
-  ],
-});
+      text: '擊殺時間',
+      value: 'killAt'
+    }
+  ]
+})
 
 function setViewTableRows() {
-  areaTable.rows = areasAsTableWithLimit();
+  areaTable.rows = areasAsTableWithLimit()
 }
 
 function* areasAsTable() {
@@ -533,8 +503,8 @@ function* areasAsTable() {
           area,
           server,
           boss,
-          killAt: +boss.killAt ? boss.killAt.toDate() : null,
-        };
+          killAt: +boss.killAt ? boss.killAt.toDate() : null
+        }
       }
     }
   }
@@ -543,397 +513,374 @@ function* areasAsTable() {
 function areasAsTableWithFilter() {
   const data = Enumerable.from(areasAsTable()).where(
     (row) =>
-      (!areaTable.filters.areas.length ||
-        areaTable.filters.areas.includes(row.area.name)) &&
-      (!areaTable.filters.lines.length ||
-        areaTable.filters.lines.includes(row.server.line)) &&
-      (!areaTable.filters.bosses.length ||
-        areaTable.filters.bosses.includes(row.boss.name)),
-  );
+      (!areaTable.filters.areas.length || areaTable.filters.areas.includes(row.area.name)) &&
+      (!areaTable.filters.lines.length || areaTable.filters.lines.includes(row.server.line)) &&
+      (!areaTable.filters.bosses.length || areaTable.filters.bosses.includes(row.boss.name))
+  )
 
   const dataOrdered = (() => {
     switch (areaTable.sort) {
-      case "area":
-        return data.orderBy((row) => row.area.name);
-      case "server":
-        return data.orderBy((row) => row.server.line);
-      case "boss":
-        return data.orderBy((row) => row.boss.name);
+      case 'area':
+        return data.orderBy((row) => row.area.name)
+      case 'server':
+        return data.orderBy((row) => row.server.line)
+      case 'boss':
+        return data.orderBy((row) => row.boss.name)
       default:
-        return data.orderBy((row) => +row.boss.killAt);
+        return data.orderBy((row) => +row.boss.killAt)
     }
-  })().thenByDescending((row) => row.server.line);
+  })().thenByDescending((row) => row.server.line)
 
-  return areaTable.order === "ascending"
-    ? dataOrdered.toArray()
-    : dataOrdered.reverse().toArray();
+  return areaTable.order === 'ascending' ? dataOrdered.toArray() : dataOrdered.reverse().toArray()
 }
 
 function areasAsTableWithLimit() {
   return Enumerable.from(areasAsTableWithFilter())
     .skip((areaTable.currentPage - 1) * settings.areaTable.pageSize)
     .take(settings.areaTable.pageSize)
-    .toArray();
+    .toArray()
 }
 
 async function areaTableOnDateChange(boss: BossEntity, date?: Date) {
-  boss.killAt = date ? dayjs(date) : dayjs.unix(0);
-  onChangeBossTab();
-  await sendMonsterTable();
+  boss.killAt = date ? dayjs(date) : dayjs.unix(0)
+  onChangeBossTab()
+  await sendMonsterTable()
 }
 
-function areaTableOnSortChange({
-  prop,
-  order,
-}: {
-  prop: string;
-  order: string;
-}) {
-  areaTable.sort = prop;
-  areaTable.order = order;
-  setViewTableRows();
+function areaTableOnSortChange({ prop, order }: { prop: string; order: string }) {
+  areaTable.sort = prop
+  areaTable.order = order
+  setViewTableRows()
 }
 
 // events
 function onChangeAreaTab(name?: keyof typeof Area.defaultAreas) {
-  name ??= timetableTabs.areaActiveTab;
-  const area = Enumerable.from(areas).where((area) => area.name === name);
+  name ??= timetableTabs.areaActiveTab
+  const area = Enumerable.from(areas).where((area) => area.name === name)
 
   timetableTabs.bossActiveTab =
     area
       .selectMany((a) =>
-        a.servers[0]?.bosses
-          .filter((b) => !bossesExclude.value.includes(b.name))
-          .map((b) => b.name),
+        a.servers[0]?.bosses.filter((b) => !bossesExclude.value.includes(b.name)).map((b) => b.name)
       )
-      .firstOrDefault() ?? "";
+      .firstOrDefault() ?? ''
 
   timetableTabs.bossActiveLineTab =
     area
       .selectMany((area) => area.getServers(linesExclude.value) ?? [])
       .select((server) => server.line.toString())
-      .firstOrDefault() ?? "";
+      .firstOrDefault() ?? ''
 
-  onChangeBossTab();
+  onChangeBossTab()
 }
 
 function onChangeBossTab() {
-  resetButtonTimeout();
-  const now = dayjs();
+  resetButtonTimeout()
+  const now = dayjs()
 
   for (const area of areas) {
-    bossButtonStates[area.name] ??= {};
+    bossButtonStates[area.name] ??= {}
     for (const server of area.servers) {
-      bossButtonStates[area.name][server.line] ??= {};
+      bossButtonStates[area.name][server.line] ??= {}
       for (const boss of server.bosses) {
-        const ms = boss.timeUntilRespawnMs(now);
-        const isAlive = !ms;
-        bossButtonStates[area.name][server.line][boss.name] = isAlive;
+        const ms = boss.timeUntilRespawnMs(now)
+        const isAlive = !ms
+        bossButtonStates[area.name][server.line][boss.name] = isAlive
         if (!isAlive) {
-          bossSetTimeout(area, server.line, boss, ms);
+          bossSetTimeout(area, server.line, boss, ms)
         }
       }
     }
   }
 
-  updateBossInfo();
+  updateBossInfo()
 }
 
 function resetButtonTimeout() {
   for (const handler of buttonResetTimeoutHandlers) {
-    clearTimeout(handler);
+    clearTimeout(handler)
   }
-  buttonResetTimeoutHandlers = [];
+  buttonResetTimeoutHandlers = []
 }
 
 async function save(showNotification = false) {
   try {
-    settings.save.areas = await createSyncMessage().toMessagePackZstdBase64();
+    settings.save.areas = await createSyncMessage().toMessagePackZstdBase64()
 
     if (showNotification) {
-      ElMessage.success(t("成功儲存"));
+      ElMessage.success(t('成功儲存'))
     }
-    return true;
+    return true
   } catch (e) {
-    console.error(e);
-    ElMessage.success(t("儲存失敗"));
-    return false;
+    console.error(e)
+    ElMessage.success(t('儲存失敗'))
+    return false
   }
 }
 
 async function loadSave() {
   if (!settings.save.areas) {
-    return;
+    return
   }
 
   try {
-    await importAreas(settings.save.areas, false);
+    await importAreas(settings.save.areas, false)
   } catch (e) {
-    console.error(e);
-    ElNotification.error(t("格式錯誤"));
+    console.error(e)
+    ElNotification.error(t('格式錯誤'))
   }
 
-  await sendMonsterTable();
+  await sendMonsterTable()
 }
 
 async function sendAndSave() {
-  await Promise.all([
-    sendMonsterTable(),
-    settings.autosave ? save() : undefined,
-  ]);
+  await Promise.all([sendMonsterTable(), settings.autosave ? save() : undefined])
 }
 
 async function onClickSave() {
   try {
-    await ElMessageBox.confirm(`${t("是否儲存時間表")}?`, "", {
-      type: "warning",
-    });
-    await save(true);
+    await ElMessageBox.confirm(`${t('是否儲存時間表')}?`, '', {
+      type: 'warning'
+    })
+    await save(true)
   } catch (e) {
-    console.info(e);
+    console.info(e)
   }
 }
 
 async function onClickLoad() {
   if (clientState.connectionState) {
-    ElMessage(t("正在跟隨, 不能修改資料"));
-    return;
+    ElMessage(t('正在跟隨, 不能修改資料'))
+    return
   }
 
   if (!settings.save.areas) {
-    ElNotification(t("沒有存檔"));
-    return;
+    ElNotification(t('沒有存檔'))
+    return
   }
 
   try {
-    await ElMessageBox.confirm(`${t("是否讀取時間表")}?`, "", {
-      type: "warning",
-    });
+    await ElMessageBox.confirm(`${t('是否讀取時間表')}?`, '', {
+      type: 'warning'
+    })
   } catch (e) {
-    console.info(e);
-    return;
+    console.info(e)
+    return
   }
 
-  await loadSave();
+  await loadSave()
 }
 
 async function onClickResetMerge() {
   try {
-    await ElMessageBox.confirm(`${t("是否以目前時間重置時間表")}?`, "", {
-      type: "warning",
-    });
+    await ElMessageBox.confirm(`${t('是否以目前時間重置時間表')}?`, '', {
+      type: 'warning'
+    })
 
     const {
-      payload: { areas: oldAreas },
-    } = SyncMessage.fromPlain(createSyncMessage().toPlain());
-    resetAreas();
+      payload: { areas: oldAreas }
+    } = SyncMessage.fromPlain(createSyncMessage().toPlain())
+    resetAreas()
 
     for (const area of areas) {
       for (const server of area.servers) {
         for (const boss of server.bosses) {
           boss.killAt =
-            oldAreas
-              .find((o) => o.name === area.name)
-              ?.findBoss(server.line, boss.name)?.killAt ?? boss.killAt;
+            oldAreas.find((o) => o.name === area.name)?.findBoss(server.line, boss.name)?.killAt ??
+            boss.killAt
         }
       }
     }
 
-    onChangeBossTab();
-    forceUpdateTimetable.value = !forceUpdateTimetable.value;
-    ElMessage.success(t("成功"));
+    onChangeBossTab()
+    forceUpdateTimetable.value = !forceUpdateTimetable.value
+    ElMessage.success(t('成功'))
   } catch (e) {
-    console.info(e);
+    console.info(e)
   }
 
-  await sendAndSave();
+  await sendAndSave()
 }
 
 async function onClickReset() {
   try {
-    await ElMessageBox.confirm(`${t("是否重置時間表")}?`, "", {
-      type: "warning",
-    });
+    await ElMessageBox.confirm(`${t('是否重置時間表')}?`, '', {
+      type: 'warning'
+    })
 
-    resetAreas();
-    onChangeBossTab();
-    forceUpdateTimetable.value = !forceUpdateTimetable.value;
-    ElMessage.success(t("成功重置"));
+    resetAreas()
+    onChangeBossTab()
+    forceUpdateTimetable.value = !forceUpdateTimetable.value
+    ElMessage.success(t('成功重置'))
   } catch (e) {
-    console.info(e);
+    console.info(e)
   }
 
-  await sendMonsterTable();
+  await sendMonsterTable()
 }
 
 async function onClickResetSettings() {
   try {
-    await ElMessageBox.confirm(`${t("是否重置設定")}?`, "", {
-      type: "warning",
-    });
-    onClickCloseHosting();
-    onClickCloseFollowing();
-    settings.resetSettings();
-    onLanguageChange();
-    onChangeMonsterRespawnTime();
-    onChangeBossesExclude();
-    onChangeLineExcludeChange();
-    ElMessage.success(t("成功重置設定"));
+    await ElMessageBox.confirm(`${t('是否重置設定')}?`, '', {
+      type: 'warning'
+    })
+    onClickCloseHosting()
+    onClickCloseFollowing()
+    settings.resetSettings()
+    onLanguageChange()
+    onChangeMonsterRespawnTime()
+    onChangeBossesExclude()
+    onChangeLineExcludeChange()
+    ElMessage.success(t('成功重置設定'))
   } catch (e) {
-    console.info(e);
+    console.info(e)
   }
 }
 
 async function onClickResetSave() {
   try {
-    await ElMessageBox.confirm(`${t("是否刪除存檔")}?`, "", {
-      type: "warning",
-    });
+    await ElMessageBox.confirm(`${t('是否刪除存檔')}?`, '', {
+      type: 'warning'
+    })
 
-    settings.deleteSave();
-    ElMessage.success(t("成功刪除存檔"));
+    settings.deleteSave()
+    ElMessage.success(t('成功刪除存檔'))
   } catch (e) {
-    console.info(e);
+    console.info(e)
   }
 }
 
 function onLinesExcludeVisibleChange(visible: boolean) {
   if (!visible) {
-    linesExclude.value.sort((a, b) => a - b);
+    linesExclude.value.sort((a, b) => a - b)
   }
 }
 
 async function onChangeBossesExclude() {
-  bossesExclude.value = settings.bossesExclude;
-  onChangeAreaTab();
-  await sendMonsterTable();
+  bossesExclude.value = settings.bossesExclude
+  onChangeAreaTab()
+  await sendMonsterTable()
 }
 
 async function onChangeLineExcludeChange() {
-  linesExclude.value = settings.linesExclude;
-  onChangeAreaTab();
-  await sendMonsterTable();
+  linesExclude.value = settings.linesExclude
+  onChangeAreaTab()
+  await sendMonsterTable()
 }
 
 async function onChangeMonsterRespawnTime() {
   for (const area of areas) {
-    area.setGlobalBossRespawnTime(settings.monsterRespawnTime);
+    area.setGlobalBossRespawnTime(settings.monsterRespawnTime)
   }
-  onChangeBossTab();
-  await sendMonsterTable();
+  onChangeBossTab()
+  await sendMonsterTable()
 }
 
-async function importAreas(
-  base64: string,
-  loadSavedExcludes = settings.loadSavedExcludes,
-) {
-  const syncMessage = await SyncMessage.fromMessagePackZstdBase64(base64);
-  areas = syncMessage.payload.areas;
+async function importAreas(base64: string, loadSavedExcludes = settings.loadSavedExcludes) {
+  const syncMessage = await SyncMessage.fromMessagePackZstdBase64(base64)
+  areas = syncMessage.payload.areas
   if (loadSavedExcludes) {
-    settings.bossesExclude = syncMessage.payload.bossesExclude;
-    settings.linesExclude = syncMessage.payload.linesExclude;
-    forceUpdateSettingSelectExcludeMenu.value =
-      !forceUpdateSettingSelectExcludeMenu.value;
-    onChangeBossesExclude();
-    onChangeLineExcludeChange();
+    settings.bossesExclude = syncMessage.payload.bossesExclude
+    settings.linesExclude = syncMessage.payload.linesExclude
+    forceUpdateSettingSelectExcludeMenu.value = !forceUpdateSettingSelectExcludeMenu.value
+    onChangeBossesExclude()
+    onChangeLineExcludeChange()
   }
-  onChangeBossTab();
-  forceUpdateTimetable.value = !forceUpdateTimetable.value;
+  onChangeBossTab()
+  forceUpdateTimetable.value = !forceUpdateTimetable.value
 }
 
-const importLoading = ref(false);
-const exportLoading = ref(false);
+const importLoading = ref(false)
+const exportLoading = ref(false)
 
 async function onClickImport() {
   if (!settings.importExportText) {
-    return;
+    return
   }
 
   if (clientState.connectionState) {
-    ElMessage(t("正在跟隨, 不能修改資料"));
-    return;
+    ElMessage(t('正在跟隨, 不能修改資料'))
+    return
   }
 
   try {
-    importLoading.value = true;
-    await importAreas(settings.importExportText);
-    ElMessage.success(t("成功導入"));
+    importLoading.value = true
+    await importAreas(settings.importExportText)
+    ElMessage.success(t('成功導入'))
   } catch (e) {
-    console.error(e);
-    ElNotification.error(t("格式錯誤"));
+    console.error(e)
+    ElNotification.error(t('格式錯誤'))
   } finally {
-    importLoading.value = false;
+    importLoading.value = false
   }
 
-  await sendMonsterTable();
+  await sendMonsterTable()
 }
 
 async function onClickExport() {
   try {
-    exportLoading.value = true;
-    settings.importExportText =
-      await createSyncMessage().toMessagePackZstdBase64();
-    ElMessage.success(t("成功導出"));
+    exportLoading.value = true
+    settings.importExportText = await createSyncMessage().toMessagePackZstdBase64()
+    ElMessage.success(t('成功導出'))
   } catch (e) {
-    console.error(e);
+    console.error(e)
   } finally {
-    exportLoading.value = false;
+    exportLoading.value = false
   }
 }
 
 function onClickViewDialogVisible() {
-  dialogs.viewDialogVisible = true;
+  dialogs.viewDialogVisible = true
 }
 
 function onClickHideAllMonster() {
-  settings.bossesExclude = Area.getAllBossNames();
-  onChangeBossesExclude();
+  settings.bossesExclude = Area.getAllBossNames()
+  onChangeBossesExclude()
 }
 
 function onClickShowAllMonster() {
-  settings.bossesExclude = [];
-  onChangeBossesExclude();
+  settings.bossesExclude = []
+  onChangeBossesExclude()
 }
 
 function onLanguageChange() {
-  locale.value = settings.language;
-  document.querySelector("html")?.setAttribute("lang", settings.language);
-  document.title = t("幻塔怪物時間表");
+  locale.value = settings.language
+  document.querySelector('html')?.setAttribute('lang', settings.language)
+  document.title = t('幻塔怪物時間表')
 }
 
 function onOpenSetting() {
-  forceUpdateSettingSelectExcludeMenu.value =
-    !forceUpdateSettingSelectExcludeMenu.value;
+  forceUpdateSettingSelectExcludeMenu.value = !forceUpdateSettingSelectExcludeMenu.value
 }
 
-let synth: Synth | null;
-let clearAudioChannelTimeout: number | null;
+let synth: Synth | null
+let clearAudioChannelTimeout: ReturnType<typeof setTimeout> | null
 
 function playAlertTone() {
-  synth ??= new Synth().toDestination();
-  synth.triggerAttackRelease("C4", "8n");
+  synth ??= new Synth().toDestination()
+  synth.triggerAttackRelease('C4', '8n')
 
   if (clearAudioChannelTimeout) {
-    clearTimeout(clearAudioChannelTimeout);
+    clearTimeout(clearAudioChannelTimeout)
   }
 
   clearAudioChannelTimeout = setTimeout(() => {
-    synth?.disconnect();
-    synth = null;
-    clearAudioChannelTimeout = null;
-  }, 3000);
+    synth?.disconnect()
+    synth = null
+    clearAudioChannelTimeout = null
+  }, 3000)
 }
 
-onLanguageChange();
-onChangeAreaTab();
+onLanguageChange()
+onChangeAreaTab()
 
 // load save if autosave is enabled
-const globalLoading = ref(false);
+const globalLoading = ref(false)
 if (settings.autosave && settings.save.areas) {
-  globalLoading.value = true;
+  globalLoading.value = true
   loadSave().then(() => {
-    globalLoading.value = false;
-  });
+    globalLoading.value = false
+  })
 }
 </script>
 
