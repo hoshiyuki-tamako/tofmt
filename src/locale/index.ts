@@ -453,7 +453,7 @@ export const messages = {
     關閉分享: 'Stop sharing',
     開始分享: 'Start sharing',
     connection_user_count: 'Connected users {length}',
-    連接時間: 'Connect at',
+    連接時間: 'Connected at',
     連接中: 'Connecting',
     已連接: 'Connected',
     連接狀態: 'Connection state',
