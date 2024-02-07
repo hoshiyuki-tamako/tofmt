@@ -24,7 +24,9 @@ npm run build
 ## main framework / library use
 
 - vuejs 3
-- typescript 4
+- pug
+- sass
+- typescript 5
 - pinia
 - element-plus
 - peerjs
@@ -32,3 +34,6 @@ npm run build
 - class-validator
 - dayjs
 - linq
+- MessagePack
+- zstd
+- tone
