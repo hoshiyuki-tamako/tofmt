@@ -2,7 +2,6 @@ import { Expose, instanceToPlain, Transform } from 'class-transformer'
 import { IsDefined, IsInt, IsString, MaxLength, Min } from 'class-validator'
 import dayjs from 'dayjs'
 import { Packr } from 'msgpackr'
-// @ts-expect-error TS2307
 import { Zstd } from '@hpcc-js/wasm/zstd'
 import { transformAndValidateSync, type ClassType } from 'class-transformer-validator'
 
@@ -21,7 +20,7 @@ export default abstract class Message {
     type: ClassType<T>,
     plain: Record<string, unknown>
   ) {
-    return transformAndValidateSync(type, plain) as T
+    return transformAndValidateSync(type, plain)
   }
 
   protected static _fromMessagePack<T extends object>(type: ClassType<T>, buffer: Uint8Array) {
@@ -76,10 +75,10 @@ export default abstract class Message {
 
   async toMessagePackZstd(compressionLevel = Message.defaultOptions.compressionLevel) {
     const zstd = await Message.zstdLoad()
-    return zstd.compress(this.toMessagePack(), compressionLevel) as Uint8Array
+    return zstd.compress(this.toMessagePack(), compressionLevel)
   }
 
   async toMessagePackZstdBase64() {
-    return btoa(String.fromCharCode.apply(null, (await this.toMessagePackZstd()) as never))
+    return btoa(String.fromCharCode(...(await this.toMessagePackZstd())))
   }
 }

@@ -109,6 +109,9 @@ export const useSettingStore = defineStore(
 
     const importExportText = ref('')
 
+    // other
+    const memo = ref('')
+
     // functions
     const resetId = () => {
       id.value = randomId()
@@ -161,8 +164,6 @@ export const useSettingStore = defineStore(
       monsterRespawnTime.value = 60
       bossesExclude.value = []
       linesExclude.value = []
-
-      importExportText.value = ''
     }
 
     // compute
@@ -215,6 +216,7 @@ export const useSettingStore = defineStore(
 
       save,
       importExportText,
+      memo,
 
       resetId,
       deleteSave,

@@ -11,7 +11,7 @@
       "@/*": ["./src/*"]
     },
     "experimentalDecorators": true,
-    "types": ["element-plus/global"],
+    "types": ["element-plus/global", "unplugin-icons/types/vue"],
     "removeComments": true
   }
 }
