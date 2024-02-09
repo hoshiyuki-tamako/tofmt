@@ -5,6 +5,7 @@ import {
   useSettingStore,
   viewModes,
   supportedLanguages,
+  getUserCurrentLanguage,
   predefineBossColor
 } from '@/stores/settings'
 import {
@@ -34,10 +35,9 @@ import type BossEntity from '@/logic/BossEntity'
 const settings = useSettingStore()
 const { t, locale } = useI18n()
 
-const url = new URL(window.location.toString())
-const urlLocale = url.searchParams.get('locale')
-if (urlLocale && supportedLanguages.find(({ value }) => value === urlLocale)) {
-  settings.language = urlLocale
+const urlLocale = new URL(window.location.toString()).searchParams.get('locale')
+if (urlLocale) {
+  settings.language = getUserCurrentLanguage(urlLocale)
 }
 
 // servers
@@ -613,7 +613,7 @@ async function save(showNotification = false) {
     return true
   } catch (e) {
     console.error(e)
-    ElMessage.success(t('儲存失敗'))
+    ElMessage.error(t('儲存失敗'))
     return false
   }
 }
