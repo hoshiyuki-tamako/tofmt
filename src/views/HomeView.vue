@@ -287,6 +287,10 @@ function onInputId(v: string) {
   settings.id = v.replaceAll(idRemoveInvalidCharactersRegex, '')
 }
 
+function onInputTargetId(v: string) {
+  settings.targetId = v.replaceAll(idRemoveInvalidCharactersRegex, '')
+}
+
 // bindings
 const timetableTabs = reactive({
   areaActiveTab: Object.keys(Area.defaultAreas)[0] as keyof typeof Area.defaultAreas,
@@ -1018,7 +1022,7 @@ el-config-provider(:locale="settings.locale")
               template(#prepend) ID
             el-button(@click="settings.resetId" :disabled="hasConnection") {{ t("隨機 ID") }}
           div(style="display: flex")
-            el-input(v-model="settings.targetId" @input="onInputId" :disabled="hasConnection" :minlength="1" :maxlength="32" :pattern="idValidationPattern")
+            el-input(v-model="settings.targetId" @input="onInputTargetId" :disabled="hasConnection" :minlength="1" :maxlength="32" :pattern="idValidationPattern")
               template(#prepend) {{ t("目標 ID") }}
 
         el-tab-pane(:label="`${t('導入')}/${t('導出')}`" lazy)
@@ -1075,7 +1079,7 @@ el-config-provider(:locale="settings.locale")
       div
         el-row(:gutter="12")
           el-col(:span="16")
-            el-input(v-model="settings.targetId" @input="onInputId" :disabled="hasConnection" :minlength="1" :maxlength="32" :pattern="idValidationPattern")
+            el-input(v-model="settings.targetId" @input="onInputTargetId" :disabled="hasConnection" :minlength="1" :maxlength="32" :pattern="idValidationPattern")
               template(#prepend) {{ t("目標 ID") }}
           el-col(:span="4")
             el-button(v-if="clientState.connectionState" @click="onClickCloseFollowing" type="danger") {{ t("取消跟蹤") }}
