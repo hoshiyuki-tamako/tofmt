@@ -101,9 +101,6 @@ function onClickHostTable() {
     dialogs.hostDialogVisible = false
     ElMessage.success(t('已允許同步'))
   })
-  peer.on('error', (err) => {
-    ElMessage.error(err.message)
-  })
   peer.on('connection', (conn) => {
     connections.push(conn)
     serverState.connectedPeers[conn.peer] = {
@@ -134,6 +131,7 @@ function onClickHostTable() {
     hostServerCleanUp()
   })
   peer.on('error', (e) => {
+    ElMessage.error(e.message)
     onServerError(e)
     onClickCloseHosting()
   })
