@@ -80,7 +80,7 @@ export const useSettingStore = defineStore(
 
     // view table
     const areaTable = reactive({
-      pageSize: 10
+      pageSize: 20
     })
 
     // show tab
@@ -148,7 +148,7 @@ export const useSettingStore = defineStore(
       showMonsterRespawnNotification.value = false
       soundMonsterRespawnNotification.value = false
 
-      areaTable.pageSize = 10
+      areaTable.pageSize = 20
 
       showTimetable.value = true
 
