@@ -1,19 +1,23 @@
-import { fileURLToPath, URL } from "node:url";
+import { fileURLToPath, URL } from 'node:url';
 
-import { defineConfig } from "vite";
-import vue from "@vitejs/plugin-vue";
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
 // @ts-expect-error TS7016
-import vuePugPlugin from "vue-pug-plugin";
+import vuePugPlugin from 'vue-pug-plugin';
 import IconsResolver from 'unplugin-icons/resolver'
-import { createHtmlPlugin } from "vite-plugin-html";
-import { viteSingleFile } from "vite-plugin-singlefile";
-import AutoImport from "unplugin-auto-import/vite";
-import Components from "unplugin-vue-components/vite";
-import { ElementPlusResolver } from "unplugin-vue-components/resolvers";
+import { createHtmlPlugin } from 'vite-plugin-html';
+import { viteSingleFile } from 'vite-plugin-singlefile';
+import AutoImport from 'unplugin-auto-import/vite';
+import Components from 'unplugin-vue-components/vite';
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 
 // https://vitejs.dev/config/
 export default defineConfig({
+  build: {
+    target: 'esnext',
+  },
   esbuild: {
+    drop: ['console', 'debugger'],
     legalComments: 'none',
   },
   plugins: [
@@ -57,7 +61,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
   },
 });
