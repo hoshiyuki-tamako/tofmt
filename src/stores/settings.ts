@@ -36,7 +36,7 @@ export const viewModes = {
   byBoss: '怪物群組'
 }
 
-export const predefineBossColor = ['#1D32B9', '#155C25']
+export const predefineBossColor = ['#1D32B9', '#155C25', '#E1FF00']
 
 export function getUserCurrentLanguage(...languages: string[]) {
   for (const language of languages
