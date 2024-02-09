@@ -38,10 +38,10 @@ export const viewModes = {
 
 export const predefineBossColor = ['#1D32B9', '#155C25']
 
-function getUserCurrentLanguage() {
-  for (const language of usePreferredLanguages().value.map((language) =>
-    language.toLocaleLowerCase()
-  )) {
+export function getUserCurrentLanguage(...languages: string[]) {
+  for (const language of languages
+    .concat(usePreferredLanguages().value)
+    .map((l) => l.toLocaleLowerCase())) {
     if (language.startsWith('ja')) {
       return 'ja'
     } else if (language.startsWith('zh-cn')) {
@@ -49,7 +49,7 @@ function getUserCurrentLanguage() {
     } else if (language.startsWith('zh')) {
       return 'zh-tw'
     } else if (language.startsWith('en')) {
-      return 'en'
+      break
     }
   }
   return 'en'
