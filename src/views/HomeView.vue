@@ -53,6 +53,8 @@ enum ConnectionState {
 }
 
 // peer
+const idValidationPattern = '[0-9a-zA-Z]+'
+const idRemoveInvalidCharactersRegex = /[^0-9a-zA-Z]/g
 const connectionPrefix = 'tofmt'
 let peer: Peer | null
 let connections = [] as DataConnection[]
@@ -87,8 +89,7 @@ function onClickHostTable() {
   onClickCloseFollowing()
 
   if (!settings.id) {
-    ElNotification.error(t('ID 不能為空'))
-    return
+    settings.resetId()
   }
 
   ElMessage(`${t('正在啟動分享')} ${settings.id}`)
@@ -282,6 +283,10 @@ async function receiveMonsterTable(rawData: ArrayBuffer) {
     ElNotification.error(t('格式錯誤'))
     followTableCleanUp()
   }
+}
+
+function onInputId(v: string) {
+  settings.id = v.replaceAll(idRemoveInvalidCharactersRegex, '')
 }
 
 // bindings
@@ -1011,11 +1016,11 @@ el-config-provider(:locale="settings.locale")
 
         el-tab-pane(:label="t('分享設定')" lazy)
           div(style="display: flex")
-            el-input(v-model="settings.id" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
+            el-input(v-model="settings.id" @input="onInputId" :disabled="hasConnection" :minlength="1" :maxlength="32" :pattern="idValidationPattern")
               template(#prepend) ID
             el-button(@click="settings.resetId" :disabled="hasConnection") {{ t("隨機 ID") }}
           div(style="display: flex")
-            el-input(v-model="settings.targetId" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
+            el-input(v-model="settings.targetId" @input="onInputId" :disabled="hasConnection" :minlength="1" :maxlength="32" :pattern="idValidationPattern")
               template(#prepend) {{ t("目標 ID") }}
 
         el-tab-pane(:label="`${t('導入')}/${t('導出')}`" lazy)
@@ -1047,7 +1052,7 @@ el-config-provider(:locale="settings.locale")
       div
         el-row(:gutter="12")
           el-col(:span="16")
-            el-input(v-model="settings.id" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
+            el-input(v-model="settings.id"  @input="onInputId" :disabled="hasConnection" :minlength="1" :maxlength="32" :pattern="idValidationPattern")
               template(#prepend) ID
           el-col(:span="4")
             el-button(v-if="serverState.connectionState" @click="onClickCloseHosting" type="danger") {{ t("關閉分享") }}
@@ -1072,7 +1077,7 @@ el-config-provider(:locale="settings.locale")
       div
         el-row(:gutter="12")
           el-col(:span="16")
-            el-input(v-model="settings.targetId" :disabled="hasConnection" :minlength="1" :maxlength="32" pattern="[0-9a-zA-Z]+")
+            el-input(v-model="settings.targetId" @input="onInputId" :disabled="hasConnection" :minlength="1" :maxlength="32" :pattern="idValidationPattern")
               template(#prepend) {{ t("目標 ID") }}
           el-col(:span="4")
             el-button(v-if="clientState.connectionState" @click="onClickCloseFollowing" type="danger") {{ t("取消跟蹤") }}

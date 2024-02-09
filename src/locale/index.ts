@@ -60,7 +60,6 @@ export const messages = {
     線路群組: '線路群組',
     怪物群組: '怪物群組',
 
-    'ID 不能為空': 'ID 不能為空',
     正在啟動分享: '正在啟動分享',
     已允許同步: '已允許同步',
     user_connect: '用戶 {id} 連接',
@@ -223,7 +222,6 @@ export const messages = {
     線路群組: '线路群组',
     怪物群組: '怪物群组',
 
-    'ID 不能為空': 'ID 不能为空',
     正在啟動分享: '正在启动分享',
     已允許同步: '已允许同步',
     user_connect: '用户 {id} 连接',
@@ -387,7 +385,6 @@ export const messages = {
     線路群組: 'By line',
     怪物群組: 'By boss',
 
-    'ID 不能為空': 'ID cannot be empty',
     正在啟動分享: 'Enabling share',
     已允許同步: 'Share started',
     user_connect: 'User {id} connected',
@@ -550,7 +547,6 @@ export const messages = {
     線路群組: '回線グループ',
     怪物群組: 'モンスターグループ',
 
-    'ID 不能為空': 'ID 必要',
     正在啟動分享: 'シェア起動中',
     已允許同步: 'シェア起動成功',
     user_connect: 'ユーザー {id} 接続',
