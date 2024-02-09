@@ -4,12 +4,7 @@ import dayjs from 'dayjs'
 import { Packr } from 'msgpackr'
 import { Zstd } from '@hpcc-js/wasm/zstd'
 import { transformAndValidateSync, type ClassType } from 'class-transformer-validator'
-
 export default abstract class Message {
-  static defaultOptions = {
-    compressionLevel: 22
-  }
-
   static packr = new Packr()
   static zstd: Zstd
   static async zstdLoad() {
@@ -73,9 +68,9 @@ export default abstract class Message {
     return Message.packr.encode(this.toPlain())
   }
 
-  async toMessagePackZstd(compressionLevel = Message.defaultOptions.compressionLevel) {
+  async toMessagePackZstd(compressionLevel?: number) {
     const zstd = await Message.zstdLoad()
-    return zstd.compress(this.toMessagePack(), compressionLevel)
+    return zstd.compress(this.toMessagePack(), compressionLevel ?? zstd.maxCLevel())
   }
 
   async toMessagePackZstdBase64() {
