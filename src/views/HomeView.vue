@@ -29,7 +29,7 @@ import MessageError from '@/exceptions/MessageError'
 
 import type Server from '@/logic/Server'
 import type { DataConnection } from 'peerjs'
-import type BossEntity from '@/logic/BossEntity'
+import BossEntity from '@/logic/BossEntity'
 
 // stores
 const settings = useSettingStore()
@@ -786,6 +786,34 @@ async function onChangeMonsterRespawnTime() {
 async function importAreas(base64: string, loadSavedExcludes = settings.loadSavedExcludes) {
   const syncMessage = await SyncMessage.fromMessagePackZstdBase64(base64)
   areas = syncMessage.payload.areas
+
+  const defaultAreas = Area.generateAreas()
+  // handle missing bosses
+  for (const area of areas) {
+    const defaultAreaBosses = defaultAreas.find((da) => da.name === area.name)?.servers.at(0)?.bosses;
+    if (!defaultAreaBosses) {
+      continue;
+    }
+    for (const server of area.servers) {
+      for (const defaultBoss of defaultAreaBosses) {
+        if (!server.bosses.find((b) => b.name === defaultBoss.name)) {
+          server.bosses.push(new BossEntity(
+                defaultBoss.name,
+                defaultBoss.nickName,
+                defaultBoss.color,
+                defaultBoss.respawnTime,
+              ))
+        }
+      }
+    }
+  }
+  // handle missing area
+  for (const defaultArea of defaultAreas) {
+    if (!areas.find((a) => a.name === defaultArea.name)) {
+      areas.push(defaultArea)
+    }
+  }
+
   if (loadSavedExcludes) {
     settings.bossesExclude = syncMessage.payload.bossesExclude
     settings.linesExclude = syncMessage.payload.linesExclude
@@ -881,9 +909,8 @@ function playAlertTone() {
 onLanguageChange()
 onChangeAreaTab()
 
-// load save if autosave is enabled
 const globalLoading = ref(false)
-if (settings.autosave && settings.save.areas) {
+if (settings.autoLoad && settings.save.areas) {
   globalLoading.value = true
   loadSave().then(() => {
     globalLoading.value = false
@@ -920,6 +947,10 @@ el-config-provider(:locale="settings.locale")
               td {{ t("自動儲存 (離線/分享生效)") }}
               td
                 el-switch(v-model="settings.autosave")
+            tr
+              td {{ t("自動讀取") }}
+              td
+                el-switch(v-model="settings.autoLoad")
           el-divider
           table.setting-table
             tr
