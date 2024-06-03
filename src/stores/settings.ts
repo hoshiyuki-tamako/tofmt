@@ -70,6 +70,7 @@ export const useSettingStore = defineStore(
     const showNickName = ref(false)
     const viewMode = ref('byBoss')
     const autosave = ref(true)
+    const autoLoad = ref(true)
     const loadSavedExcludes = ref(true)
 
     // notification
@@ -140,6 +141,7 @@ export const useSettingStore = defineStore(
       showNickName.value = false
       viewMode.value = 'byBoss'
       autosave.value = true
+      autoLoad.value = true
       loadSavedExcludes.value = true
       bossColor.value = ''
 
@@ -189,6 +191,7 @@ export const useSettingStore = defineStore(
       showNickName,
       viewMode,
       autosave,
+      autoLoad,
       loadSavedExcludes,
       bossColor,
 

@@ -55,7 +55,14 @@ export const areas = {
   八號倉: {
     maxLine: 50,
     bosses: [['英招', '英招', '#4D425D']]
-  }
+  },
+  格網: {
+    maxLine: 50,
+    bosses: [
+      ["陣點球α-實驗型", "球", "#E0E0E0"],
+      ["幻蝎", "幻蝎", "#2F4D4A"],
+    ]
+  },
 }
 
 export const lineLimit = 255
